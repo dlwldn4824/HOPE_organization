@@ -1,0 +1,35 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-hope-green: #4caf3d;
+  --color-hope-green-dark: #3d9630;
+  --color-hope-green-light: #e8f5e6;
+  --color-hope-sky: #ddf4ff;
+  --color-hope-sky-deep: #b8e4ff;
+  --color-hope-text: #1f2937;
+  --color-hope-sub: #6b7280;
+  --color-hope-border: #e5e7eb;
+  --font-sans: 'Pretendard', system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+  min-height: 100dvh;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  width: 100%;
+}
