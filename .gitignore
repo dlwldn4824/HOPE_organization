@@ -43,3 +43,6 @@ wandb/
 .vscode/
 *.log
 .cache/
+
+# team org branch: docs 제외
+docs/
