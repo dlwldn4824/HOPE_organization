@@ -44,5 +44,7 @@ wandb/
 *.log
 .cache/
 
-# team org branch: docs 제외
+# team org branch: 내부 docs 제외, API 연동 가이드만 추적
 docs/
+!docs/API_*.md
+!docs/API_*.txt
