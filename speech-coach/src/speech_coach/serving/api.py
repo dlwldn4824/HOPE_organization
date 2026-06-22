@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import os
+from pathlib import Path
+
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import RedirectResponse
 
@@ -20,7 +23,13 @@ _pipeline: InferencePipeline | None = None
 def get_pipeline() -> InferencePipeline:
     global _pipeline
     if _pipeline is None:
-        _pipeline = InferencePipeline.from_stub()
+        ckpt = os.environ.get("HOPE_CKPT_DIR", "/root/hope/checkpoints/stage1b-mix/final")
+        ckpt_path = Path(ckpt)
+        weights = ckpt_path / "model.safetensors"
+        if weights.exists() or (ckpt_path / "pytorch_model.bin").exists():
+            _pipeline = InferencePipeline.from_checkpoint(ckpt_path)
+        else:
+            _pipeline = InferencePipeline.from_stub()
     return _pipeline
 
 

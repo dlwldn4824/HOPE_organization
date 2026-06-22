@@ -73,6 +73,8 @@ case "$1" in
   start)
     if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then exit 0; fi
     cd "$DIR" || exit 1
+    export HOPE_CKPT_DIR="${HOPE_CKPT_DIR:-/root/hope/checkpoints/stage1b-mix/final}"
+    export HOPE_MODEL_VERSION="${HOPE_MODEL_VERSION:-stage1b-mix}"
     nohup "$DIR/.venv/bin/uvicorn" speech_coach.serving.api:app --host 0.0.0.0 --port 8000 \
       >> /var/log/hope-api.log 2>&1 &
     echo $! > "$PIDFILE"

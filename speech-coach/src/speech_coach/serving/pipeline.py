@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import time
 from pathlib import Path
 
@@ -47,6 +48,23 @@ class InferencePipeline:
             model_version=model_version,
             normal_dist_path=None,
             stub_recognizer=True,
+        )
+
+    @classmethod
+    def from_checkpoint(
+        cls,
+        ckpt_dir: str | Path,
+        *,
+        model_version: str | None = None,
+        normal_dist_path: str | Path | None = None,
+    ) -> InferencePipeline:
+        ckpt = Path(ckpt_dir)
+        version = model_version or os.environ.get("HOPE_MODEL_VERSION", ckpt.parent.name)
+        return cls(
+            ckpt_dir=ckpt,
+            model_version=version,
+            normal_dist_path=normal_dist_path,
+            stub_recognizer=False,
         )
 
     def __call__(self, audio_bytes: bytes, target_word: str, target_phonemes: list[str]) -> AnalyzeResponse:

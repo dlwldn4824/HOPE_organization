@@ -241,11 +241,13 @@ setMessage(result.feedback.kid_text);
 | 항목 | 상태 |
 |------|------|
 | API 형식·Swagger | ✅ 사용 가능 |
-| 실제 Wav2Vec2 모델 추론 | 🔄 연동 예정 (현재 스텁 응답) |
+| 실제 Wav2Vec2 모델 추론 | ✅ `stage1b-mix` (서버 배포됨) |
 | webm/m4a 직접 업로드 | ❌ wav 권장 |
 | 인증/API Key | ❌ 없음 |
 
-스텁 모드에서는 응답 형식은 맞지만, **실제 발음 분석 점수는 아직 참고용**입니다. UI·연동 개발은 지금부터 진행해도 됩니다.
+응답의 `model_version`이 `stage1b-mix`이면 실제 CTC 모델이 동작 중입니다. (`kspc-v0.8-stub`은 스텁)
+
+**참고 점수 (사과, 서버 검증):** `apple_ok_1.wav` → PCC 100 / `apple_err_1.wav` → PCC 80
 
 ---
 

@@ -51,7 +51,8 @@ Swagger 테스트 방법
 사과/다과, 자두/차두, 바다/파다, 소리/도리, 가방/카방, 불/물
 
 ⚠️ 참고
-• 지금은 API 형식 연동용 (스텁). UI 개발은 바로 가능
+• model_version=stage1b-mix 이면 실제 모델 동작 중
+• apple_err wav 넣으면 PCC 100 아님 (예: 80)
 • 오디오는 wav 권장 (webm은 추후)
 • 상세 문서: docs/API_프론트_연동가이드.md
 
