@@ -1,5 +1,8 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Target } from 'lucide-react';
+import { notifyDataUpdated } from '../hooks/useBackendResource';
+import { claimRewardMission } from '../utils/rewardApi';
 import type { RewardMission } from '../types/reward';
 
 const CARD_CLASS =
@@ -12,10 +15,20 @@ interface RewardMissionCardProps {
 
 export function RewardMissionCard({ isLoggedIn, missions }: RewardMissionCardProps) {
   const navigate = useNavigate();
+  const [claimingId, setClaimingId] = useState<string | null>(null);
 
-  const handleAction = (mission: RewardMission) => {
+  const handleAction = async (mission: RewardMission) => {
     if (mission.action === 'claim' && mission.claimable) {
-      alert('보상을 받았습니다!');
+      setClaimingId(mission.id);
+
+      try {
+        await claimRewardMission(mission.id);
+        notifyDataUpdated();
+      } catch (error) {
+        alert(error instanceof Error ? error.message : '보상을 받지 못했습니다.');
+      } finally {
+        setClaimingId(null);
+      }
       return;
     }
     navigate('/learning');
@@ -52,13 +65,14 @@ export function RewardMissionCard({ isLoggedIn, missions }: RewardMissionCardPro
                   <button
                     type="button"
                     onClick={() => handleAction(mission)}
-                    className={`h-8 shrink-0 rounded-lg px-3 text-xs font-bold transition-colors active:scale-[0.99] ${
+                    disabled={claimingId === mission.id}
+                    className={`h-8 shrink-0 rounded-lg px-3 text-xs font-bold transition-colors active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60 ${
                       mission.action === 'claim' && mission.claimable
                         ? 'bg-hope-green text-white hover:brightness-105'
                         : 'border border-hope-green/30 bg-white text-hope-green hover:bg-hope-green-light'
                     }`}
                   >
-                    {mission.actionLabel}
+                    {claimingId === mission.id ? '받는 중...' : mission.actionLabel}
                   </button>
                 </div>
                 <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-hope-green-light">
