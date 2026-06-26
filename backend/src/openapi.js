@@ -4,24 +4,24 @@ export const openApiDocument = {
     title: 'HOPE Backend API',
     version: '0.1.0',
     description:
-      'API for the HOPE speech learning frontend. Current implementation uses in-memory seed data and bearer-token sessions.',
+      'HOPE 발음 학습 앱이 사용하는 API입니다. 지금은 데이터를 서버 메모리에만 저장해서 서버를 재시작하면 사라지고, 로그인하면 받는 토큰으로 사용자를 구분합니다.',
   },
   servers: [
     {
       url: 'http://localhost:4000',
-      description: 'Local backend server',
+      description: '로컬 백엔드 서버',
     },
   ],
   tags: [
-    { name: 'System', description: 'Server status and API documentation' },
-    { name: 'Auth', description: 'Signup, login, and current user' },
-    { name: 'Home', description: 'Home dashboard data' },
-    { name: 'Learning', description: 'Learning page data and game result submission' },
-    { name: 'Speech', description: 'WAV upload proxy to the external speech-coach analysis API' },
-    { name: 'Records', description: 'Learning history and progress records' },
-    { name: 'Rewards', description: 'Reward shop, attendance, and mission rewards' },
-    { name: 'MyPage', description: 'Profile and my page data' },
-    { name: 'Settings', description: 'Notification, learning, parent, and privacy settings' },
+    { name: 'System', description: '서버 상태 및 API 문서' },
+    { name: 'Auth', description: '회원가입, 로그인, 현재 사용자 정보' },
+    { name: 'Home', description: '홈 대시보드 데이터' },
+    { name: 'Learning', description: '학습 페이지 데이터 및 게임 결과 제출' },
+    { name: 'Speech', description: '외부 발음 분석 API로의 WAV 업로드 프록시' },
+    { name: 'Records', description: '학습 기록 및 진행 현황' },
+    { name: 'Rewards', description: '리워드 상점, 출석, 미션 보상' },
+    { name: 'MyPage', description: '프로필 및 마이페이지 데이터' },
+    { name: 'Settings', description: '알림, 학습, 보호자, 개인정보 설정' },
   ],
   components: {
     securitySchemes: {
@@ -36,7 +36,7 @@ export const openApiDocument = {
         type: 'object',
         properties: {
           ok: { type: 'boolean', example: false },
-          error: { type: 'string', example: 'Authentication required' },
+          error: { type: 'string', example: '인증이 필요합니다' },
         },
       },
       UserProfile: {
@@ -122,7 +122,7 @@ export const openApiDocument = {
       },
       SpeechAnalyzeResponse: {
         description:
-          'Response returned by https://go-neung.activejang.com/v1/utterance/analyze. The exact shape is controlled by the speech-coach service.',
+          'https://go-neung.activejang.com/v1/utterance/analyze 가 반환하는 응답입니다. 정확한 형식은 발음 분석 서비스가 결정합니다.',
         oneOf: [
           { type: 'object', additionalProperties: true },
           { type: 'string' },
@@ -169,10 +169,10 @@ export const openApiDocument = {
     '/health': {
       get: {
         tags: ['System'],
-        summary: 'Check server health',
+        summary: '서버 상태 확인',
         responses: {
           200: {
-            description: 'Server is healthy',
+            description: '서버가 정상 동작 중입니다',
           },
         },
       },
@@ -180,10 +180,10 @@ export const openApiDocument = {
     '/openapi.json': {
       get: {
         tags: ['System'],
-        summary: 'Get OpenAPI document',
+        summary: 'API 명세(OpenAPI 문서) 가져오기',
         responses: {
           200: {
-            description: 'OpenAPI JSON',
+            description: 'OpenAPI 문서(JSON)',
           },
         },
       },
@@ -191,16 +191,16 @@ export const openApiDocument = {
     '/': {
       get: {
         tags: ['System'],
-        summary: 'Redirect to Swagger UI',
+        summary: 'Swagger 문서 페이지로 이동',
         responses: {
-          302: { description: 'Redirects to /docs' },
+          302: { description: '/docs 로 이동합니다' },
         },
       },
     },
     '/api/auth/signup': {
       post: {
         tags: ['Auth'],
-        summary: 'Create a new account',
+        summary: '회원가입',
         requestBody: {
           required: true,
           content: {
@@ -211,17 +211,17 @@ export const openApiDocument = {
         },
         responses: {
           201: {
-            description: 'Account created',
+            description: '계정이 생성되었습니다',
             content: { 'application/json': { schema: { $ref: '#/components/schemas/AuthResponse' } } },
           },
-          409: { description: 'User already exists' },
+          409: { description: '이미 가입된 사용자입니다' },
         },
       },
     },
     '/api/auth/login': {
       post: {
         tags: ['Auth'],
-        summary: 'Log in and receive a bearer token',
+        summary: '로그인하고 로그인 토큰 받기',
         requestBody: {
           required: true,
           content: {
@@ -232,26 +232,26 @@ export const openApiDocument = {
         },
         responses: {
           200: {
-            description: 'Login succeeded',
+            description: '로그인 성공',
             content: { 'application/json': { schema: { $ref: '#/components/schemas/AuthResponse' } } },
           },
-          401: { description: 'Invalid credentials' },
+          401: { description: '아이디 또는 비밀번호가 올바르지 않습니다' },
         },
       },
     },
     '/api/me': {
       get: {
         tags: ['Auth'],
-        summary: 'Get current user profile',
+        summary: '현재 로그인한 사용자 정보 조회',
         security: [{ bearerAuth: [] }],
         responses: {
-          200: { description: 'Current user profile' },
-          401: { description: 'Authentication required' },
+          200: { description: '현재 사용자 정보' },
+          401: { description: '로그인이 필요합니다' },
         },
       },
       patch: {
         tags: ['Auth'],
-        summary: 'Update current user profile',
+        summary: '현재 로그인한 사용자 정보 수정',
         security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
@@ -268,37 +268,37 @@ export const openApiDocument = {
           },
         },
         responses: {
-          200: { description: 'Profile updated' },
-          401: { description: 'Authentication required' },
+          200: { description: '프로필이 수정되었습니다' },
+          401: { description: '로그인이 필요합니다' },
         },
       },
     },
     '/api/home': {
       get: {
         tags: ['Home'],
-        summary: 'Get home dashboard data',
+        summary: '홈 화면 데이터 조회',
         security: [{ bearerAuth: [] }],
         responses: {
-          200: { description: 'Home data', content: { 'application/json': { schema: { $ref: '#/components/schemas/HomeData' } } } },
-          401: { description: 'Authentication required' },
+          200: { description: '홈 화면 데이터', content: { 'application/json': { schema: { $ref: '#/components/schemas/HomeData' } } } },
+          401: { description: '로그인이 필요합니다' },
         },
       },
     },
     '/api/learning': {
       get: {
         tags: ['Learning'],
-        summary: 'Get learning page data',
+        summary: '학습 페이지 데이터 조회',
         security: [{ bearerAuth: [] }],
         responses: {
-          200: { description: 'Learning status and games' },
-          401: { description: 'Authentication required' },
+          200: { description: '학습 현황과 게임 목록' },
+          401: { description: '로그인이 필요합니다' },
         },
       },
     },
     '/api/learning/results': {
       post: {
         tags: ['Learning'],
-        summary: 'Submit a learning game result',
+        summary: '학습(게임) 결과 저장',
         security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
@@ -309,17 +309,17 @@ export const openApiDocument = {
           },
         },
         responses: {
-          201: { description: 'Learning result saved' },
-          401: { description: 'Authentication required' },
+          201: { description: '학습 결과가 저장되었습니다' },
+          401: { description: '로그인이 필요합니다' },
         },
       },
     },
     '/api/speech/analyze': {
       post: {
         tags: ['Speech'],
-        summary: 'Analyze a WAV utterance with the speech-coach API',
+        summary: '녹음한 발음을 분석 서비스로 분석',
         description:
-          'Receives the same multipart/form-data fields as the external speech-coach API and forwards them to https://go-neung.activejang.com/v1/utterance/analyze.',
+          '외부 발음 분석 API와 동일한 형식(multipart/form-data)으로 데이터를 받아 https://go-neung.activejang.com/v1/utterance/analyze 로 그대로 전달합니다.',
         requestBody: {
           required: true,
           content: {
@@ -331,7 +331,7 @@ export const openApiDocument = {
                   audio: {
                     type: 'string',
                     format: 'binary',
-                    description: '16kHz mono WAV, up to 5 seconds.',
+                    description: '16kHz 모노 WAV 파일, 최대 5초',
                   },
                   target_word: {
                     type: 'string',
@@ -340,7 +340,7 @@ export const openApiDocument = {
                   target_phonemes: {
                     type: 'string',
                     description:
-                      'IPA JSON array. Leave empty to let speech-coach convert target_word automatically.',
+                      '발음 기호(IPA) 배열입니다. 비워두면 target_word를 분석 서비스가 자동으로 변환합니다.',
                     example: '["s","a","g","w","a"]',
                   },
                   user_id: {
@@ -355,44 +355,44 @@ export const openApiDocument = {
         },
         responses: {
           200: {
-            description: 'Analysis result from speech-coach',
+            description: '분석 서비스가 돌려준 결과',
             content: {
               'application/json': {
                 schema: { $ref: '#/components/schemas/SpeechAnalyzeResponse' },
               },
             },
           },
-          415: { description: 'Request must be multipart/form-data' },
-          422: { description: 'Validation error returned by speech-coach' },
+          415: { description: '요청 형식이 multipart/form-data여야 합니다' },
+          422: { description: '분석 서비스에서 입력값 오류를 반환했습니다' },
         },
       },
     },
     '/api/records': {
       get: {
         tags: ['Records'],
-        summary: 'Get learning record data',
+        summary: '학습 기록 데이터 조회',
         security: [{ bearerAuth: [] }],
         responses: {
-          200: { description: 'Learning records' },
-          401: { description: 'Authentication required' },
+          200: { description: '학습 기록' },
+          401: { description: '로그인이 필요합니다' },
         },
       },
     },
     '/api/rewards': {
       get: {
         tags: ['Rewards'],
-        summary: 'Get rewards, shop, attendance, and missions',
+        summary: '보상, 상점, 출석, 미션 정보 조회',
         security: [{ bearerAuth: [] }],
         responses: {
-          200: { description: 'Reward data' },
-          401: { description: 'Authentication required' },
+          200: { description: '보상 관련 데이터' },
+          401: { description: '로그인이 필요합니다' },
         },
       },
     },
     '/api/rewards/missions/{missionId}/claim': {
       post: {
         tags: ['Rewards'],
-        summary: 'Claim a mission reward',
+        summary: '미션 보상 받기',
         security: [{ bearerAuth: [] }],
         parameters: [
           {
@@ -404,37 +404,37 @@ export const openApiDocument = {
           },
         ],
         responses: {
-          200: { description: 'Mission reward claimed' },
-          400: { description: 'Mission is not claimable' },
-          404: { description: 'Mission not found' },
-          401: { description: 'Authentication required' },
+          200: { description: '미션 보상을 받았습니다' },
+          400: { description: '아직 받을 수 없는 미션입니다' },
+          404: { description: '미션을 찾을 수 없습니다' },
+          401: { description: '로그인이 필요합니다' },
         },
       },
     },
     '/api/mypage': {
       get: {
         tags: ['MyPage'],
-        summary: 'Get my page profile and statistics',
+        summary: '마이페이지 프로필과 통계 조회',
         security: [{ bearerAuth: [] }],
         responses: {
-          200: { description: 'My page data' },
-          401: { description: 'Authentication required' },
+          200: { description: '마이페이지 데이터' },
+          401: { description: '로그인이 필요합니다' },
         },
       },
     },
     '/api/settings': {
       get: {
         tags: ['Settings'],
-        summary: 'Get user settings',
+        summary: '설정 조회',
         security: [{ bearerAuth: [] }],
         responses: {
-          200: { description: 'Settings', content: { 'application/json': { schema: { $ref: '#/components/schemas/Settings' } } } },
-          401: { description: 'Authentication required' },
+          200: { description: '설정 값', content: { 'application/json': { schema: { $ref: '#/components/schemas/Settings' } } } },
+          401: { description: '로그인이 필요합니다' },
         },
       },
       patch: {
         tags: ['Settings'],
-        summary: 'Update user settings',
+        summary: '설정 변경',
         security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
@@ -445,8 +445,8 @@ export const openApiDocument = {
           },
         },
         responses: {
-          200: { description: 'Settings updated' },
-          401: { description: 'Authentication required' },
+          200: { description: '설정이 변경되었습니다' },
+          401: { description: '로그인이 필요합니다' },
         },
       },
     },
