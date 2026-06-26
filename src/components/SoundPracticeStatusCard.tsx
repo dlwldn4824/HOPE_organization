@@ -27,7 +27,9 @@ export function SoundPracticeStatusCard({ isLoggedIn, items }: SoundPracticeStat
       </div>
 
       {!isLoggedIn ? (
-        <p className="text-sm text-hope-sub">로그인 후 학습 기록을 확인할 수 있어요.</p>
+        <p className="text-sm text-hope-sub">로그인하면 학습 기록을 확인할 수 있어요.</p>
+      ) : items.length === 0 ? (
+        <EmptyState>아직 소리별 연습 현황이 없습니다.</EmptyState>
       ) : (
         <ul className="space-y-4">
           {items.map((item) => (
@@ -49,5 +51,13 @@ export function SoundPracticeStatusCard({ isLoggedIn, items }: SoundPracticeStat
         </ul>
       )}
     </article>
+  );
+}
+
+function EmptyState({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex min-h-[180px] items-center justify-center rounded-2xl bg-gray-50 px-4 text-center text-sm font-semibold text-hope-sub">
+      {children}
+    </div>
   );
 }
