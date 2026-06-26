@@ -92,15 +92,19 @@ export function AccuracyChartCard({
 
         <select
           className="h-9 shrink-0 rounded-xl border border-hope-border bg-white px-3 text-xs font-semibold text-hope-text outline-none focus:border-hope-green"
-          defaultValue="4weeks"
+          defaultValue="recent"
           aria-label="기간 선택"
         >
-          <option value="4weeks">최근 4주</option>
+          <option value="recent">최근 기록</option>
         </select>
       </div>
 
       {!isLoggedIn ? (
-        <p className="text-sm text-hope-sub">로그인 후 학습 기록을 확인할 수 있어요.</p>
+        <p className="text-sm text-hope-sub">로그인하면 학습 기록을 확인할 수 있어요.</p>
+      ) : data.length === 0 ? (
+        <div className="flex min-h-[240px] items-center justify-center rounded-2xl bg-gray-50 px-4 text-center text-sm font-semibold text-hope-sub">
+          아직 발음 정확도 기록이 없습니다.
+        </div>
       ) : (
         <>
           <div className="mb-4 flex min-w-0 flex-wrap gap-2">
