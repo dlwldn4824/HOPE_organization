@@ -1,21 +1,32 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
+import type { SignupFormData } from '../types/auth';
 import type { UserProfile } from '../types/home';
 
 interface AuthContextValue {
   user: UserProfile | null;
+  token: string | null;
   isLoggedIn: boolean;
   login: (profile?: Partial<UserProfile>) => void;
+  loginWithCredentials: (identifier: string, password: string) => Promise<void>;
+  signupWithForm: (form: SignupFormData) => Promise<void>;
   updateProfile: (profile: Partial<UserProfile>) => void;
   logout: () => void;
 }
 
-const MOCK_USER: UserProfile = {
+interface AuthResponse {
+  token: string;
+  user: UserProfile;
+}
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '';
+
+const DEMO_USER: UserProfile = {
   uid: 'user-001',
   nickname: '지우',
-  level: 12,
-  exp: 320,
-  maxExp: 500,
-  star: 1250,
+  level: 1,
+  exp: 0,
+  maxExp: 100,
+  star: 0,
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -25,12 +36,62 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const saved = sessionStorage.getItem('hope_user');
     return saved ? (JSON.parse(saved) as UserProfile) : null;
   });
+  const [token, setToken] = useState<string | null>(() => sessionStorage.getItem('hope_token'));
 
-  const login = useCallback((profile?: Partial<UserProfile>) => {
-    const next = { ...MOCK_USER, ...profile };
-    setUser(next);
-    sessionStorage.setItem('hope_user', JSON.stringify(next));
+  const applySession = useCallback((nextUser: UserProfile, nextToken: string | null) => {
+    setUser(nextUser);
+    setToken(nextToken);
+    sessionStorage.setItem('hope_user', JSON.stringify(nextUser));
+
+    if (nextToken) {
+      sessionStorage.setItem('hope_token', nextToken);
+    } else {
+      sessionStorage.removeItem('hope_token');
+    }
   }, []);
+
+  const login = useCallback(
+    (profile?: Partial<UserProfile>) => {
+      applySession({ ...DEMO_USER, ...profile }, null);
+    },
+    [applySession],
+  );
+
+  const loginWithCredentials = useCallback(
+    async (identifier: string, password: string) => {
+      const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identifier, password }),
+      });
+      const payload = (await response.json()) as Partial<AuthResponse> & { error?: string };
+
+      if (!response.ok || !payload.user || !payload.token) {
+        throw new Error(payload.error ?? '아이디 또는 비밀번호가 올바르지 않습니다.');
+      }
+
+      applySession(payload.user, payload.token);
+    },
+    [applySession],
+  );
+
+  const signupWithForm = useCallback(
+    async (form: SignupFormData) => {
+      const response = await fetch(`${API_BASE_URL}/api/auth/signup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      });
+      const payload = (await response.json()) as Partial<AuthResponse> & { error?: string };
+
+      if (!response.ok || !payload.user || !payload.token) {
+        throw new Error(payload.error ?? '회원가입에 실패했습니다.');
+      }
+
+      applySession(payload.user, payload.token);
+    },
+    [applySession],
+  );
 
   const updateProfile = useCallback((profile: Partial<UserProfile>) => {
     setUser((prev) => {
@@ -43,18 +104,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(() => {
     setUser(null);
+    setToken(null);
     sessionStorage.removeItem('hope_user');
+    sessionStorage.removeItem('hope_token');
   }, []);
 
   const value = useMemo(
     () => ({
       user,
+      token,
       isLoggedIn: user !== null,
       login,
+      loginWithCredentials,
+      signupWithForm,
       updateProfile,
       logout,
     }),
-    [user, login, updateProfile, logout],
+    [user, token, login, loginWithCredentials, signupWithForm, updateProfile, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
