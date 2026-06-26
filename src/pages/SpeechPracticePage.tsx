@@ -54,6 +54,7 @@ export function SpeechPracticePage({ mode }: SpeechPracticePageProps) {
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<BlobPart[]>([]);
   const timeoutRef = useRef<number | null>(null);
+  const sessionStartedAtRef = useRef(Date.now());
 
   const statusLabel = useMemo(() => {
     if (isRecording) return '녹음 중';
@@ -137,12 +138,15 @@ export function SpeechPracticePage({ mode }: SpeechPracticePageProps) {
       });
 
       const score = nextResult.score ?? 0;
+      const studyMinutes = Math.max(1, Math.round((Date.now() - sessionStartedAtRef.current) / 60000));
+      sessionStartedAtRef.current = Date.now();
+
       await saveLearningResult({
         gameId: mode,
         targetWord,
         accuracy: score,
         earnedStars: score >= 90 ? 5 : score >= 80 ? 4 : score >= 65 ? 3 : score >= 45 ? 2 : 1,
-        durationSeconds: 5,
+        durationSeconds: studyMinutes * 60,
         analysis: nextResult.raw,
       });
 
