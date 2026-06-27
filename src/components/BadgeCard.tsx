@@ -19,6 +19,10 @@ export function BadgeCard({ isLoggedIn, badges }: BadgeCardProps) {
 
       {!isLoggedIn ? (
         <p className="text-sm text-hope-sub">로그인 후 획득한 배지를 확인할 수 있어요.</p>
+      ) : badges.length === 0 ? (
+        <div className="flex min-h-[120px] items-center justify-center rounded-2xl bg-gray-50 px-4 text-center text-sm font-semibold text-hope-sub">
+          아직 획득한 배지가 없습니다.
+        </div>
       ) : (
         <div className="grid min-w-0 grid-cols-4 gap-3">
           {badges.slice(0, 4).map((badge) => (

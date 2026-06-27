@@ -8,6 +8,7 @@ import { RewardPage } from './pages/RewardPage';
 import { MyPage } from './pages/MyPage';
 import { SettingPage } from './pages/SettingPage';
 import { StubPage } from './pages/StubPage';
+import { SpeechPracticePage } from './pages/SpeechPracticePage';
 
 export default function App() {
   return (
@@ -17,9 +18,9 @@ export default function App() {
           <Route path="/" element={<AuthPage />} />
           <Route path="/home" element={<Home />} />
           <Route path="/learning" element={<LearningPage />} />
-          <Route path="/learning/pitch" element={<StubPage title="피치 맞추기" />} />
-          <Route path="/learning/monster" element={<StubPage title="몬스터 대결" />} />
-          <Route path="/learning/matching" element={<StubPage title="발음 카드 짝맞추기" />} />
+          <Route path="/learning/pitch" element={<SpeechPracticePage mode="pitch" />} />
+          <Route path="/learning/monster" element={<SpeechPracticePage mode="monster" />} />
+          <Route path="/learning/matching" element={<SpeechPracticePage mode="matching" />} />
           <Route path="/history" element={<LearningRecordPage />} />
           <Route path="/rewards" element={<RewardPage />} />
           <Route path="/mypage" element={<MyPage />} />
