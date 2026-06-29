@@ -7,7 +7,7 @@ export function buildUserInfo(user: UserProfile): UserInfo {
     exp: user.exp,
     maxExp: user.maxExp,
     star: user.star,
-    notifications: 3,
+    notifications: 0,
     gender: user.gender,
   };
 }

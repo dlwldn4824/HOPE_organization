@@ -1,4 +1,5 @@
 import { BookOpen } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { BottomNavigation, Sidebar } from '../components/Sidebar';
 import { GameCard } from '../components/GameCard';
 import { HomeHeader } from '../components/HomeHeader';
@@ -9,6 +10,7 @@ import { useLearningData } from '../hooks/useLearningData';
 
 /** LEARNING-001 — 학습하기 페이지 */
 export function LearningPage() {
+  const navigate = useNavigate();
   const { isLoggedIn, userInfo, status, games } = useLearningData();
 
   return (
@@ -48,6 +50,7 @@ export function LearningPage() {
 
                   <button
                     type="button"
+                    onClick={() => navigate('/guide#games')}
                     className="h-11 shrink-0 rounded-2xl border border-hope-green/30 bg-white px-5 text-sm font-bold text-hope-green transition-colors hover:bg-hope-green-light active:scale-[0.99]"
                   >
                     게임 가이드

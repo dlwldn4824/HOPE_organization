@@ -4,21 +4,23 @@ import { PlaceholderBox } from './PlaceholderBox';
 
 interface RewardItemCardProps {
   item: ShopItem;
-  onSelect: (itemId: string) => void;
+  disabled?: boolean;
+  onPurchase: (item: ShopItem) => void;
 }
 
-export function RewardItemCard({ item, onSelect }: RewardItemCardProps) {
-  const handleClick = () => {
-    console.log('select item', item.id);
-    alert('아이템 구매 기능은 추후 연결됩니다.');
-    onSelect(item.id);
-  };
+export function RewardItemCard({ item, disabled = false, onPurchase }: RewardItemCardProps) {
+  const isOwned = Boolean(item.purchased);
 
   return (
     <button
       type="button"
-      onClick={handleClick}
-      className="flex min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white text-left shadow-sm transition-shadow hover:shadow-md active:scale-[0.99]"
+      onClick={() => onPurchase(item)}
+      disabled={disabled || isOwned}
+      className={`flex min-w-0 flex-col overflow-hidden rounded-2xl border bg-white text-left shadow-sm transition-shadow ${
+        isOwned
+          ? 'cursor-default border-hope-green/30 bg-hope-green-light/20 opacity-90'
+          : 'border-slate-100 hover:shadow-md active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60'
+      }`}
     >
       <div className="relative">
         {item.imageSrc ? (
@@ -39,11 +41,16 @@ export function RewardItemCard({ item, onSelect }: RewardItemCardProps) {
             className="aspect-square w-full rounded-none border-x-0 border-t-0 text-[8px]"
           />
         )}
-        {item.isNew && (
+        {item.isNew && !isOwned ? (
           <span className="absolute left-2 top-2 rounded-full bg-hope-green px-2 py-0.5 text-[10px] font-bold text-white">
             NEW
           </span>
-        )}
+        ) : null}
+        {isOwned ? (
+          <span className="absolute right-2 top-2 rounded-full bg-hope-green px-2 py-0.5 text-[10px] font-bold text-white">
+            보유
+          </span>
+        ) : null}
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col p-3">
@@ -55,7 +62,9 @@ export function RewardItemCard({ item, onSelect }: RewardItemCardProps) {
             <Gem className="h-3.5 w-3.5 text-pink-400" />
           )}
           <span className="truncate">
-            {item.price.toLocaleString()} {item.currency === 'coin' ? '코인' : '보석'}
+            {isOwned
+              ? '구매 완료'
+              : `${item.price.toLocaleString()} ${item.currency === 'coin' ? '코인' : '보석'}`}
           </span>
         </p>
       </div>

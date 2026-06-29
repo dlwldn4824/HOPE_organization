@@ -21,7 +21,7 @@ export function NotificationSettingsCard({
   onChange,
 }: NotificationSettingsCardProps) {
   return (
-    <SettingCard title="알림 설정">
+    <SettingCard title="알림 설정" id="notifications">
       {!isLoggedIn ? (
         <p className="mt-4 text-sm text-hope-sub">로그인 후 설정을 이용할 수 있어요.</p>
       ) : (

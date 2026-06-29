@@ -11,8 +11,6 @@ interface HomeHeaderProps {
 }
 
 export function HomeHeader({ isLoggedIn, userInfo }: HomeHeaderProps) {
-  const notifications = isLoggedIn && userInfo ? userInfo.notifications : 0;
-
   return (
     <header className="flex items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
       <div className="flex min-w-0 items-center gap-3">
@@ -43,7 +41,7 @@ export function HomeHeader({ isLoggedIn, userInfo }: HomeHeaderProps) {
           <p className="text-sm font-medium text-hope-sub">로그인이 필요합니다.</p>
         )}
 
-        <NotificationButton notifications={notifications} />
+        <NotificationButton isLoggedIn={isLoggedIn} />
         <MenuButton />
       </div>
     </header>

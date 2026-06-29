@@ -22,7 +22,7 @@ export function LearningSettingCard({ isLoggedIn, settings, onChange }: Learning
   };
 
   return (
-    <SettingCard title="학습 설정">
+    <SettingCard title="학습 설정" id="learning">
       {!isLoggedIn ? (
         <p className="mt-4 text-sm text-hope-sub">로그인 후 설정을 이용할 수 있어요.</p>
       ) : (

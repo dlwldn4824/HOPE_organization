@@ -13,6 +13,7 @@ export interface ShopItem {
   price: number;
   currency: RewardCurrency;
   isNew?: boolean;
+  purchased?: boolean;
   category: RewardShopTab;
   imageSrc?: string;
   imageFallbackSrc?: string;
@@ -22,8 +23,12 @@ export interface AttendanceDay {
   day: number;
   label: string;
   reward: string;
+  rewardType: RewardCurrency;
+  rewardAmount: number;
   isActive: boolean;
   isCompleted: boolean;
+  isClaimed: boolean;
+  claimable: boolean;
 }
 
 export type RewardMissionAction = 'claim' | 'navigate';

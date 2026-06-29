@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { ShoppingBag } from 'lucide-react';
+import { notifyDataUpdated } from '../hooks/useBackendResource';
+import { purchaseShopItem } from '../utils/rewardApi';
 import type { RewardShopTab, ShopItem } from '../types/reward';
 import { RewardItemCard } from './RewardItemCard';
 
@@ -21,11 +23,34 @@ interface RewardShopProps {
 
 export function RewardShop({ isLoggedIn, items }: RewardShopProps) {
   const [activeTab, setActiveTab] = useState<RewardShopTab>('recommended');
+  const [purchasingId, setPurchasingId] = useState<string | null>(null);
 
   const filteredItems =
     activeTab === 'recommended'
       ? items
       : items.filter((item) => item.category === activeTab);
+
+  const handlePurchase = async (item: ShopItem) => {
+    if (item.purchased || purchasingId) return;
+
+    const currencyLabel = item.currency === 'coin' ? '코인' : '보석';
+    const confirmed = window.confirm(
+      `${item.name}\n${item.price.toLocaleString()} ${currencyLabel}을(를) 사용해 구매할까요?`,
+    );
+    if (!confirmed) return;
+
+    setPurchasingId(item.id);
+
+    try {
+      const result = await purchaseShopItem(item.id);
+      notifyDataUpdated();
+      alert(result.message ?? '구매가 완료되었습니다.');
+    } catch (error) {
+      alert(error instanceof Error ? error.message : '아이템을 구매하지 못했습니다.');
+    } finally {
+      setPurchasingId(null);
+    }
+  };
 
   return (
     <article className={CARD_CLASS}>
@@ -59,7 +84,12 @@ export function RewardShop({ isLoggedIn, items }: RewardShopProps) {
 
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-5 xl:gap-4">
             {filteredItems.map((item) => (
-              <RewardItemCard key={item.id} item={item} onSelect={() => undefined} />
+              <RewardItemCard
+                key={item.id}
+                item={item}
+                disabled={purchasingId !== null}
+                onPurchase={(selected) => void handlePurchase(selected)}
+              />
             ))}
           </div>
         </>

@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import { BottomNavigation, Sidebar } from '../components/Sidebar';
 import { HomeHeader } from '../components/HomeHeader';
 import { MyPageTitle } from '../components/MyPageTitle';
@@ -11,13 +12,25 @@ import { useMyPageData } from '../hooks/useMyPageData';
 
 /** MYPAGE-001 — 마이페이지 */
 export function MyPage() {
+  const navigate = useNavigate();
   const { updateProfile } = useAuth();
   const handleLogout = useLogout();
   const { isLoggedIn, userInfo, profile, statistics, accountSettings, etcSettings } =
     useMyPageData();
 
   const handleAccountSettingClick = (settingKey: string) => {
-    console.log('setting clicked', settingKey);
+    if (settingKey === 'email' || settingKey === 'password') {
+      navigate('/settings#account');
+      return;
+    }
+    if (settingKey === 'notifications') {
+      navigate('/settings#notifications');
+      return;
+    }
+    if (settingKey === 'language') {
+      navigate('/settings#learning');
+      return;
+    }
   };
 
   const handleEtcSettingClick = (settingKey: string) => {
@@ -25,7 +38,18 @@ export function MyPage() {
       handleLogout();
       return;
     }
-    console.log('setting clicked', settingKey);
+    if (settingKey === 'guide') {
+      navigate('/guide');
+      return;
+    }
+    if (settingKey === 'support') {
+      navigate('/support');
+      return;
+    }
+    if (settingKey === 'privacy') {
+      navigate('/privacy');
+      return;
+    }
   };
 
   return (
@@ -59,6 +83,9 @@ export function MyPage() {
                 onUpdateProfile={(data) => updateProfile(data)}
               />
               <StatisticsCard isLoggedIn={isLoggedIn} statistics={statistics} />
+            </section>
+
+            <section className="grid grid-cols-1 gap-6 lg:grid-cols-2">
               <SettingsListCard
                 title="계정 설정"
                 items={accountSettings}

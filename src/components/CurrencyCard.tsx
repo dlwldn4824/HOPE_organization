@@ -1,7 +1,10 @@
+import { useState } from 'react';
 import { Coins, Gem } from 'lucide-react';
+import { ChargeModal } from './ChargeModal';
+import type { RewardCurrency } from '../types/reward';
 
 interface CurrencyCardProps {
-  type: 'coin' | 'gem';
+  type: RewardCurrency;
   amount: number;
   isLoggedIn: boolean;
   onCharge?: () => void;
@@ -60,20 +63,32 @@ interface CurrencySummaryProps {
 }
 
 export function CurrencySummary({ isLoggedIn, coins, gems }: CurrencySummaryProps) {
+  const [chargeCurrency, setChargeCurrency] = useState<RewardCurrency | null>(null);
+
   return (
-    <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:gap-6">
-      <CurrencyCard
-        type="coin"
-        amount={coins}
-        isLoggedIn={isLoggedIn}
-        onCharge={() => alert('코인 충전 기능은 추후 연결됩니다.')}
-      />
-      <CurrencyCard
-        type="gem"
-        amount={gems}
-        isLoggedIn={isLoggedIn}
-        onCharge={() => alert('보석 충전 기능은 추후 연결됩니다.')}
-      />
-    </section>
+    <>
+      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:gap-6">
+        <CurrencyCard
+          type="coin"
+          amount={coins}
+          isLoggedIn={isLoggedIn}
+          onCharge={() => setChargeCurrency('coin')}
+        />
+        <CurrencyCard
+          type="gem"
+          amount={gems}
+          isLoggedIn={isLoggedIn}
+          onCharge={() => setChargeCurrency('gem')}
+        />
+      </section>
+
+      {chargeCurrency && (
+        <ChargeModal
+          currency={chargeCurrency}
+          isOpen
+          onClose={() => setChargeCurrency(null)}
+        />
+      )}
+    </>
   );
 }

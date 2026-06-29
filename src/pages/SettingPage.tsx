@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { AccountSettingsCard } from '../components/AccountSettingsCard';
 import { AppInfoCard } from '../components/AppInfoCard';
 import { BottomNavigation, Sidebar } from '../components/Sidebar';
@@ -15,6 +16,7 @@ import type { AccountSettingItem } from '../types/setting';
 
 /** SETTING-001 — 설정 페이지 */
 export function SettingPage() {
+  const location = useLocation();
   const handleLogout = useLogout();
   const {
     isLoggedIn,
@@ -23,6 +25,10 @@ export function SettingPage() {
     defaultLearning,
     defaultParent,
     defaultPrivacy,
+    updateNotificationSettings,
+    updateLearningSettings,
+    updateParentSettings,
+    updatePrivacySettings,
   } = useSettingData();
 
   const [notifications, setNotifications] = useState(defaultNotifications);
@@ -30,27 +36,104 @@ export function SettingPage() {
   const [parent, setParent] = useState(defaultParent);
   const [privacy, setPrivacy] = useState(defaultPrivacy);
 
+  useEffect(() => {
+    setNotifications(defaultNotifications);
+  }, [defaultNotifications]);
+
+  useEffect(() => {
+    setLearning(defaultLearning);
+  }, [defaultLearning]);
+
+  useEffect(() => {
+    setParent(defaultParent);
+  }, [defaultParent]);
+
+  useEffect(() => {
+    setPrivacy(defaultPrivacy);
+  }, [defaultPrivacy]);
+
+  useEffect(() => {
+    if (!location.hash) return;
+    const id = location.hash.replace('#', '');
+    const element = document.getElementById(id);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [location.hash]);
+
   const handleNotificationChange = (
     key: keyof typeof notifications,
     value: boolean,
   ) => {
-    setNotifications((prev) => ({ ...prev, [key]: value }));
+    const prev = notifications;
+    const next = { ...notifications, [key]: value };
+    setNotifications(next);
+    if (isLoggedIn) {
+      void updateNotificationSettings(next).catch(() => {
+        alert('알림 설정을 저장하지 못했습니다.');
+        setNotifications(prev);
+      });
+    }
   };
 
   const handleLearningChange = <K extends keyof typeof learning>(
     key: K,
     value: (typeof learning)[K],
   ) => {
-    setLearning((prev) => ({ ...prev, [key]: value }));
+    const prev = learning;
+    const next = { ...learning, [key]: value };
+    setLearning(next);
+    if (isLoggedIn) {
+      void updateLearningSettings(next).catch(() => {
+        alert('학습 설정을 저장하지 못했습니다.');
+        setLearning(prev);
+      });
+    }
+  };
+
+  const handleParentEmailChange = (email: string) => {
+    setParent((prev) => ({ ...prev, parentEmail: email }));
+  };
+
+  const handleParentEmailBlur = () => {
+    if (!isLoggedIn) return;
+    void updateParentSettings(parent).catch(() => {
+      alert('보호자 설정을 저장하지 못했습니다.');
+      setParent(defaultParent);
+    });
+  };
+
+  const handleWeeklyReportChange = (enabled: boolean) => {
+    const prev = parent;
+    const next = { ...parent, weeklyReportEnabled: enabled };
+    setParent(next);
+    if (isLoggedIn) {
+      void updateParentSettings(next).catch(() => {
+        alert('보호자 설정을 저장하지 못했습니다.');
+        setParent(prev);
+      });
+    }
+  };
+
+  const handleVoiceStorageChange = (enabled: boolean) => {
+    const prev = privacy;
+    const next = { ...privacy, voiceDataStorage: enabled };
+    setPrivacy(next);
+    if (isLoggedIn) {
+      void updatePrivacySettings(next).catch(() => {
+        alert('개인정보 설정을 저장하지 못했습니다.');
+        setPrivacy(prev);
+      });
+    }
   };
 
   const handleAccountAction = (key: AccountSettingItem['key']) => {
     if (key === 'email') {
-      console.log('change email');
+      alert('이메일 변경은 고객센터(support@hope.local)로 문의해주세요.');
       return;
     }
     if (key === 'password') {
-      console.log('change password');
+      alert('비밀번호 변경은 고객센터(support@hope.local)로 문의해주세요.');
       return;
     }
     if (key === 'logout') {
@@ -58,12 +141,14 @@ export function SettingPage() {
       return;
     }
     if (key === 'withdraw') {
-      alert('정말 탈퇴하시겠습니까?');
+      if (window.confirm('정말 탈퇴하시겠습니까? 고객센터로 연결됩니다.')) {
+        window.location.href = 'mailto:support@hope.local?subject=회원%20탈퇴%20요청';
+      }
     }
   };
 
   const handleParentPasswordChange = () => {
-    console.log('change parent password');
+    alert('보호자 비밀번호 변경은 고객센터(support@hope.local)로 문의해주세요.');
   };
 
   return (
@@ -105,18 +190,15 @@ export function SettingPage() {
               <ParentSettingCard
                 isLoggedIn={isLoggedIn}
                 settings={parent}
-                onEmailChange={(email) => setParent((prev) => ({ ...prev, parentEmail: email }))}
-                onWeeklyReportChange={(enabled) =>
-                  setParent((prev) => ({ ...prev, weeklyReportEnabled: enabled }))
-                }
+                onEmailChange={handleParentEmailChange}
+                onEmailBlur={handleParentEmailBlur}
+                onWeeklyReportChange={handleWeeklyReportChange}
                 onPasswordChange={handleParentPasswordChange}
               />
               <PrivacySettingCard
                 isLoggedIn={isLoggedIn}
                 settings={privacy}
-                onVoiceStorageChange={(enabled) =>
-                  setPrivacy((prev) => ({ ...prev, voiceDataStorage: enabled }))
-                }
+                onVoiceStorageChange={handleVoiceStorageChange}
               />
               <AppInfoCard />
             </section>

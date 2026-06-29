@@ -1,16 +1,26 @@
 import http from 'node:http';
 import { URL } from 'node:url';
 import {
+  chargeWallet,
+  claimAttendanceReward,
+  claimEventReward,
   claimMission,
+  getChargePackages,
   getDefaultUser,
+  getEvents,
+  getGameSession,
   getHomeData,
   getLearningData,
   getMyPageData,
+  getNotifications,
   getRecordData,
   getRewards,
   getSettings,
   getUserByToken,
   login,
+  markAllNotificationsRead,
+  markNotificationRead,
+  purchaseShopItem,
   saveLearningResult,
   signup,
   updateProfile,
@@ -91,8 +101,28 @@ async function handleApi(req, res) {
     return sendJson(res, 200, getHomeData(requireUser(req)));
   }
 
+  if (method === 'GET' && path === '/api/notifications') {
+    return sendJson(res, 200, getNotifications(requireUser(req)));
+  }
+
+  const notificationReadMatch = path.match(/^\/api\/notifications\/([^/]+)\/read$/);
+  if (method === 'PATCH' && notificationReadMatch) {
+    return sendJson(res, 200, markNotificationRead(requireUser(req), notificationReadMatch[1]));
+  }
+
+  if (method === 'POST' && path === '/api/notifications/read-all') {
+    return sendJson(res, 200, markAllNotificationsRead(requireUser(req)));
+  }
+
   if (method === 'GET' && path === '/api/learning') {
     return sendJson(res, 200, getLearningData(requireUser(req)));
+  }
+
+  const gameSessionMatch = path.match(/^\/api\/learning\/games\/([^/]+)\/session$/);
+  if (method === 'GET' && gameSessionMatch) {
+    const session = getGameSession(gameSessionMatch[1]);
+    if (!session) throw new HttpError(404, 'Game session not found');
+    return sendJson(res, 200, session);
   }
 
   if (method === 'POST' && path === '/api/learning/results') {
@@ -132,6 +162,41 @@ async function handleApi(req, res) {
   const missionClaimMatch = path.match(/^\/api\/rewards\/missions\/([^/]+)\/claim$/);
   if (method === 'POST' && missionClaimMatch) {
     const result = claimMission(requireUser(req), missionClaimMatch[1]);
+    if (!result.ok) throw new HttpError(result.status, result.message);
+    return sendJson(res, 200, result);
+  }
+
+  const shopPurchaseMatch = path.match(/^\/api\/rewards\/shop\/([^/]+)\/purchase$/);
+  if (method === 'POST' && shopPurchaseMatch) {
+    const result = purchaseShopItem(requireUser(req), shopPurchaseMatch[1]);
+    if (!result.ok) throw new HttpError(result.status, result.message);
+    return sendJson(res, 200, result);
+  }
+
+  if (method === 'POST' && path === '/api/rewards/wallet/charge') {
+    const result = chargeWallet(requireUser(req), await readJson(req));
+    if (!result.ok) throw new HttpError(result.status, result.message);
+    return sendJson(res, 200, result);
+  }
+
+  if (method === 'GET' && path === '/api/rewards/wallet/packages') {
+    return sendJson(res, 200, getChargePackages());
+  }
+
+  if (method === 'POST' && path === '/api/rewards/attendance/claim') {
+    const body = await readJson(req);
+    const result = claimAttendanceReward(requireUser(req), body.day);
+    if (!result.ok) throw new HttpError(result.status, result.message);
+    return sendJson(res, 200, result);
+  }
+
+  if (method === 'GET' && path === '/api/events') {
+    return sendJson(res, 200, getEvents(requireUser(req)));
+  }
+
+  const eventClaimMatch = path.match(/^\/api\/events\/([^/]+)\/claim$/);
+  if (method === 'POST' && eventClaimMatch) {
+    const result = claimEventReward(requireUser(req), eventClaimMatch[1]);
     if (!result.ok) throw new HttpError(result.status, result.message);
     return sendJson(res, 200, result);
   }

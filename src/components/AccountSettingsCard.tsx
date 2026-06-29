@@ -16,7 +16,7 @@ interface AccountSettingsCardProps {
 
 export function AccountSettingsCard({ isLoggedIn, onAction }: AccountSettingsCardProps) {
   return (
-    <SettingCard title="계정 설정">
+    <SettingCard title="계정 설정" id="account">
       {!isLoggedIn ? (
         <p className="mt-4 text-sm text-hope-sub">로그인 후 설정을 이용할 수 있어요.</p>
       ) : (

@@ -8,10 +8,12 @@ import { RewardMissionCard } from '../components/RewardMissionCard';
 import { RewardShop } from '../components/RewardShop';
 import { RewardTitleSection } from '../components/RewardTitleSection';
 import { useRewardData } from '../hooks/useRewardData';
+import { useEventData } from '../hooks/useEventData';
 
 /** REWARD-001 — 보상 페이지 */
 export function RewardPage() {
   const { isLoggedIn, userInfo, balance, shopItems, attendance, missions } = useRewardData();
+  const { activeEvent } = useEventData();
 
   return (
     <div className="relative min-h-dvh bg-hope-sky">
@@ -44,7 +46,7 @@ export function RewardPage() {
               <div className="flex min-w-0 flex-col gap-6">
                 <AttendanceRewardCard isLoggedIn={isLoggedIn} days={attendance} />
                 <RewardMissionCard isLoggedIn={isLoggedIn} missions={missions} />
-                <EventRewardBanner />
+                <EventRewardBanner event={activeEvent} />
               </div>
             </section>
             </div>

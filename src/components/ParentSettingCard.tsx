@@ -6,6 +6,7 @@ interface ParentSettingCardProps {
   isLoggedIn: boolean;
   settings: ParentSettings;
   onEmailChange: (email: string) => void;
+  onEmailBlur?: () => void;
   onWeeklyReportChange: (enabled: boolean) => void;
   onPasswordChange: () => void;
 }
@@ -14,11 +15,12 @@ export function ParentSettingCard({
   isLoggedIn,
   settings,
   onEmailChange,
+  onEmailBlur,
   onWeeklyReportChange,
   onPasswordChange,
 }: ParentSettingCardProps) {
   return (
-    <SettingCard title="보호자 설정">
+    <SettingCard title="보호자 설정" id="parent">
       {!isLoggedIn ? (
         <p className="mt-4 text-sm text-hope-sub">로그인 후 설정을 이용할 수 있어요.</p>
       ) : (
@@ -32,6 +34,7 @@ export function ParentSettingCard({
               type="email"
               value={settings.parentEmail}
               onChange={(e) => onEmailChange(e.target.value)}
+              onBlur={onEmailBlur}
               className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-hope-text outline-none focus:border-hope-green focus:ring-2 focus:ring-hope-green/20"
             />
           </div>

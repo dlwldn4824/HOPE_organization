@@ -18,7 +18,7 @@ export function PrivacySettingCard({
   const navigate = useNavigate();
 
   return (
-    <SettingCard title="개인정보 및 보안">
+    <SettingCard title="개인정보 및 보안" id="privacy">
       {!isLoggedIn ? (
         <p className="mt-4 text-sm text-hope-sub">로그인 후 설정을 이용할 수 있어요.</p>
       ) : (
@@ -34,12 +34,18 @@ export function PrivacySettingCard({
           />
           <SettingRow
             label="데이터 다운로드 요청"
-            onClick={() => alert('데이터 다운로드 요청')}
+            onClick={() => {
+              window.location.href = 'mailto:support@hope.local?subject=데이터%20다운로드%20요청';
+            }}
           />
           <SettingRow
             label="학습 데이터 삭제 요청"
             variant="danger"
-            onClick={() => alert('삭제 요청 페이지로 이동')}
+            onClick={() => {
+              if (window.confirm('학습 데이터 삭제를 요청하시겠습니까? 고객센터로 연결됩니다.')) {
+                window.location.href = 'mailto:support@hope.local?subject=학습%20데이터%20삭제%20요청';
+              }
+            }}
           />
         </div>
       )}

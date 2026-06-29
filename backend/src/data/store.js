@@ -25,6 +25,50 @@ const state = {
   learningResults: [],
   claimedMissionIdsByUserId: new Map(),
   settingsByUserId: new Map(),
+  readNotificationIdsByUserId: new Map(),
+  walletByUserId: new Map(),
+  eventClaimsByUserId: new Map(),
+  claimedAttendanceDaysByUserId: new Map(),
+  chargeLogByUserId: new Map(),
+};
+
+const EVENT_CATALOG = [
+  {
+    id: 'spring-2026',
+    title: '봄맞이 한정 아이템',
+    description: '이벤트에 참여하고 한정판 아이템과 코인을 받아보세요!',
+    status: 'active',
+    startsAt: '2026-03-01T00:00:00.000Z',
+    endsAt: '2026-06-30T23:59:59.000Z',
+    ctaLabel: '보상 받기',
+    rewards: [
+      { id: 'spring-coins', label: '200 코인', type: 'coin', amount: 200 },
+      { id: 'spring-hoodie', label: '후드티(옐로우)', type: 'shop_item', shopItemId: '2' },
+    ],
+  },
+  {
+    id: 'welcome-bonus',
+    title: '신규 가입 환영 이벤트',
+    description: 'HOPE에 오신 것을 환영해요! 환영 코인을 받아가세요.',
+    status: 'active',
+    startsAt: '2026-01-01T00:00:00.000Z',
+    endsAt: '2026-12-31T23:59:59.000Z',
+    ctaLabel: '환영 보상 받기',
+    rewards: [{ id: 'welcome-coins', label: '100 코인', type: 'coin', amount: 100 }],
+  },
+];
+
+const CHARGE_PACKAGES = {
+  coin: [
+    { id: 'coin-100', amount: 100, priceLabel: '무료 (데모)' },
+    { id: 'coin-500', amount: 500, priceLabel: '무료 (데모)' },
+    { id: 'coin-1000', amount: 1000, priceLabel: '무료 (데모)' },
+  ],
+  gem: [
+    { id: 'gem-5', amount: 5, priceLabel: '무료 (데모)' },
+    { id: 'gem-10', amount: 10, priceLabel: '무료 (데모)' },
+    { id: 'gem-30', amount: 30, priceLabel: '무료 (데모)' },
+  ],
 };
 
 function publicUser(user) {
@@ -42,7 +86,7 @@ function publicUser(user) {
 function userInfo(user) {
   return {
     ...publicUser(user),
-    notifications: getClaimableMissions(user).length,
+    notifications: getNotifications(user).unreadCount,
   };
 }
 
@@ -195,6 +239,51 @@ export function getLearningData(user) {
   };
 }
 
+export function getGameSession(gameId) {
+  if (gameId === 'pitch') {
+    return {
+      gameId: 'pitch',
+      rounds: [
+        { targetWord: '아', targetHz: 196, targetPhonemes: '["a"]', hint: '낮은 "아" 소리를 길게 내보세요' },
+        { targetWord: '우', targetHz: 220, targetPhonemes: '["u"]', hint: '조금 더 높은 "우" 소리를 내보세요' },
+        { targetWord: '이', targetHz: 262, targetPhonemes: '["i"]', hint: '밝은 "이" 소리를 내보세요' },
+        { targetWord: '오', targetHz: 294, targetPhonemes: '["o"]', hint: '둥근 "오" 소리를 내보세요' },
+        { targetWord: '에', targetHz: 330, targetPhonemes: '["e"]', hint: '가장 높은 "에" 소리를 내보세요' },
+      ],
+    };
+  }
+
+  if (gameId === 'monster') {
+    return {
+      gameId: 'monster',
+      monsterMaxHp: 100,
+      playerMaxHp: 100,
+      rounds: [
+        { targetWord: '사과', targetPhonemes: '["s","a","g","w","a"]' },
+        { targetWord: '사자', targetPhonemes: '["s","a","j","a"]' },
+        { targetWord: '나무', targetPhonemes: '["n","a","m","u"]' },
+        { targetWord: '고양이', targetPhonemes: '["g","o","j","a","ng","i"]' },
+      ],
+    };
+  }
+
+  if (gameId === 'matching') {
+    return {
+      gameId: 'matching',
+      pairs: [
+        { id: 'cat', word: '고양이', emoji: '🐱', targetPhonemes: '["g","o","j","a","ng","i"]' },
+        { id: 'banana', word: '바나나', emoji: '🍌', targetPhonemes: '["b","a","n","a","n","a"]' },
+        { id: 'apple', word: '사과', emoji: '🍎', targetPhonemes: '["s","a","g","w","a"]' },
+        { id: 'radio', word: '라디오', emoji: '📻', targetPhonemes: '["r","a","d","i","o"]' },
+        { id: 'tree', word: '나무', emoji: '🌳', targetPhonemes: '["n","a","m","u"]' },
+        { id: 'lion', word: '사자', emoji: '🦁', targetPhonemes: '["s","a","j","a"]' },
+      ],
+    };
+  }
+
+  return null;
+}
+
 export function getRecordData(user) {
   const results = getResults(user);
   const accuracies = results.map((result) => result.accuracy);
@@ -269,23 +358,89 @@ export function getRewards(user) {
   const claimed = getClaimedMissions(user);
   const claimedCoins = [...claimed].reduce((sum, id) => sum + (missionRewardCoins[id] ?? 0), 0);
   const claimedGems = [...claimed].reduce((sum, id) => sum + (missionRewardGems[id] ?? 0), 0);
+  const wallet = getWallet(user);
+  const purchased = getPurchasedItems(user);
 
   return {
     userInfo: userInfo(user),
     balance: {
-      coins: user.star + claimedCoins,
-      gems: claimedGems,
+      coins: user.star + claimedCoins - wallet.spentCoins + wallet.bonusCoins,
+      gems: claimedGems - wallet.spentGems + wallet.bonusGems,
     },
-    shopItems: [
-      { id: '1', name: '버니 헤어밴드', price: 500, currency: 'coin', isNew: true, category: 'recommended', imageSrc: '/assets/보상상점/shop-bunny-hairband.png' },
-      { id: '2', name: '노랑 후드티', price: 800, currency: 'coin', isNew: true, category: 'recommended', imageSrc: '/assets/보상상점/shop-hoodie-yellow.png' },
-      { id: '3', name: '리온 백팩', price: 1000, currency: 'coin', category: 'item', imageSrc: '/assets/보상상점/shop-leon-backpack.png' },
-      { id: '4', name: '보석 10개', price: 10, currency: 'gem', category: 'item', imageSrc: '/assets/보상상점/shop-gems-10.png' },
-      { id: '5', name: '피요 헤드셋', price: 700, currency: 'coin', category: 'decoration', imageSrc: '/assets/보상상점/shop-piyo-headphone.png' },
-    ],
-    attendance: buildAttendance(results),
+    shopItems: getShopCatalog().map((item) => ({
+      ...item,
+      purchased: purchased.has(item.id),
+    })),
+    attendance: buildAttendance(results, user),
     missions: buildMissionStates(results, claimed),
   };
+}
+
+export function purchaseShopItem(user, itemId) {
+  const item = getShopCatalog().find((shopItem) => shopItem.id === itemId);
+  if (!item) return { ok: false, status: 404, message: '상품을 찾을 수 없습니다.' };
+
+  const purchased = getPurchasedItems(user);
+  if (purchased.has(itemId)) {
+    return { ok: false, status: 400, message: '이미 보유한 아이템이에요.' };
+  }
+
+  const balance = getRewards(user).balance;
+  if (item.currency === 'coin' && balance.coins < item.price) {
+    return { ok: false, status: 400, message: '코인이 부족해요.' };
+  }
+  if (item.currency === 'gem' && balance.gems < item.price) {
+    return { ok: false, status: 400, message: '보석이 부족해요.' };
+  }
+
+  const wallet = getWallet(user);
+  if (item.currency === 'coin') wallet.spentCoins += item.price;
+  else wallet.spentGems += item.price;
+
+  purchased.add(itemId);
+
+  if (item.id === '4') {
+    wallet.bonusGems += 10;
+  }
+
+  return {
+    ok: true,
+    message: `${item.name}을(를) 구매했어요!`,
+    balance: getRewards(user).balance,
+    item: { ...item, purchased: true },
+  };
+}
+
+function getShopCatalog() {
+  return [
+    { id: '1', name: '버니 헤어밴드', price: 500, currency: 'coin', isNew: true, category: 'recommended', imageSrc: '/assets/보상상점/shop-bunny-hairband.png', imageFallbackSrc: '/assets/보상상점/shop-bunny-hairband.png' },
+    { id: '2', name: '후드티(옐로우)', price: 800, currency: 'coin', isNew: true, category: 'recommended', imageSrc: '/assets/보상상점/shop-hoodie-yellow.png', imageFallbackSrc: '/assets/보상상점/shop-hoodie-yellow.png' },
+    { id: '3', name: '리온 백팩', price: 1000, currency: 'coin', category: 'item', imageSrc: '/assets/보상상점/shop-leon-backpack.png', imageFallbackSrc: '/assets/보상상점/shop-leon-backpack.png' },
+    { id: '4', name: '보석 10개', price: 10, currency: 'gem', category: 'item', imageSrc: '/assets/보상상점/shop-gems-10.png', imageFallbackSrc: '/assets/보상상점/shop-gems-10.png' },
+    { id: '5', name: '피오 헤드폰', price: 700, currency: 'coin', category: 'decoration', imageSrc: '/assets/보상상점/shop-piyo-headphone.png', imageFallbackSrc: '/assets/보상상점/shop-piyo-headphone.png' },
+    { id: '6', name: '컬러 팔레트', price: 600, currency: 'coin', category: 'decoration', imageSrc: '/assets/보상상점/shop-color-palette.png', imageFallbackSrc: '/assets/보상상점/shop-color-palette.png' },
+    { id: '7', name: '네임 플레이트', price: 400, currency: 'coin', category: 'other', imageSrc: '/assets/보상상점/shop-name-plate.png', imageFallbackSrc: '/assets/보상상점/shop-name-plate.png' },
+    { id: '8', name: '별 마이크', price: 900, currency: 'coin', category: 'avatar', imageSrc: '/assets/보상상점/shop-star-mic.png', imageFallbackSrc: '/assets/보상상점/shop-star-mic.png' },
+    { id: '9', name: '말풍선(블루)', price: 300, currency: 'coin', category: 'decoration', imageSrc: '/assets/보상상점/shop-speech-bubble-blue.png', imageFallbackSrc: '/assets/보상상점/shop-speech-bubble-blue.png' },
+    { id: '10', name: '랜덤 박스', price: 1200, currency: 'coin', category: 'item', imageSrc: '/assets/보상상점/shop-random-box.png', imageFallbackSrc: '/assets/보상상점/shop-random-box.png' },
+  ];
+}
+
+function getWallet(user) {
+  if (!state.walletByUserId.has(user.uid)) {
+    state.walletByUserId.set(user.uid, { spentCoins: 0, spentGems: 0, bonusCoins: 0, bonusGems: 0 });
+  }
+  const wallet = state.walletByUserId.get(user.uid);
+  if (wallet.bonusCoins === undefined) wallet.bonusCoins = 0;
+  return wallet;
+}
+
+function getPurchasedItems(user) {
+  const wallet = getWallet(user);
+  if (!wallet.purchasedItemIds) {
+    wallet.purchasedItemIds = new Set();
+  }
+  return wallet.purchasedItemIds;
 }
 
 export function claimMission(user, missionId) {
@@ -295,6 +450,136 @@ export function claimMission(user, missionId) {
 
   getClaimedMissions(user).add(missionId);
   return { ok: true, balance: getRewards(user).balance, mission: { ...mission, claimable: false, actionLabel: '완료' } };
+}
+
+function getEventClaims(user) {
+  if (!state.eventClaimsByUserId.has(user.uid)) {
+    state.eventClaimsByUserId.set(user.uid, new Set());
+  }
+  return state.eventClaimsByUserId.get(user.uid);
+}
+
+function getClaimedAttendanceDays(user) {
+  if (!state.claimedAttendanceDaysByUserId.has(user.uid)) {
+    state.claimedAttendanceDaysByUserId.set(user.uid, new Set());
+  }
+  return state.claimedAttendanceDaysByUserId.get(user.uid);
+}
+
+function getChargeLog(user) {
+  const today = new Date().toISOString().slice(0, 10);
+  if (!state.chargeLogByUserId.has(user.uid)) {
+    state.chargeLogByUserId.set(user.uid, { date: today, count: 0 });
+  }
+  const log = state.chargeLogByUserId.get(user.uid);
+  if (log.date !== today) {
+    log.date = today;
+    log.count = 0;
+  }
+  return log;
+}
+
+export function getEvents(user) {
+  const claims = getEventClaims(user);
+  const events = EVENT_CATALOG.map((event) => ({
+    ...event,
+    claimed: claims.has(event.id),
+    claimable: event.status === 'active' && !claims.has(event.id),
+  }));
+
+  return {
+    userInfo: userInfo(user),
+    events,
+    activeEvent: events.find((event) => event.status === 'active' && !event.claimed) ?? events.find((e) => e.status === 'active') ?? null,
+  };
+}
+
+export function claimEventReward(user, eventId) {
+  const event = EVENT_CATALOG.find((item) => item.id === eventId);
+  if (!event) return { ok: false, status: 404, message: '이벤트를 찾을 수 없습니다.' };
+  if (event.status !== 'active') return { ok: false, status: 400, message: '진행 중인 이벤트가 아닙니다.' };
+
+  const claims = getEventClaims(user);
+  if (claims.has(eventId)) return { ok: false, status: 400, message: '이미 보상을 받았어요.' };
+
+  const wallet = getWallet(user);
+  const purchased = getPurchasedItems(user);
+
+  for (const reward of event.rewards) {
+    if (reward.type === 'coin') wallet.bonusCoins += reward.amount;
+    if (reward.type === 'gem') wallet.bonusGems += reward.amount;
+    if (reward.type === 'shop_item' && reward.shopItemId) purchased.add(reward.shopItemId);
+  }
+
+  claims.add(eventId);
+
+  return {
+    ok: true,
+    message: `${event.title} 보상을 받았어요!`,
+    balance: getRewards(user).balance,
+    event: { ...event, claimed: true, claimable: false },
+  };
+}
+
+export function getChargePackages() {
+  return CHARGE_PACKAGES;
+}
+
+export function chargeWallet(user, payload) {
+  const currency = payload.currency === 'gem' ? 'gem' : 'coin';
+  const packageId = String(payload.packageId ?? '');
+  const packages = CHARGE_PACKAGES[currency];
+  const pack = packages.find((item) => item.id === packageId);
+
+  if (!pack) return { ok: false, status: 404, message: '충전 패키지를 찾을 수 없습니다.' };
+
+  const log = getChargeLog(user);
+  if (log.count >= 3) {
+    return { ok: false, status: 400, message: '오늘은 더 이상 충전할 수 없어요. (하루 3회)' };
+  }
+
+  const wallet = getWallet(user);
+  if (currency === 'coin') wallet.bonusCoins += pack.amount;
+  else wallet.bonusGems += pack.amount;
+
+  log.count += 1;
+
+  return {
+    ok: true,
+    message: `${pack.amount}${currency === 'coin' ? ' 코인' : ' 보석'}이 충전되었어요!`,
+    balance: getRewards(user).balance,
+    charged: { currency, amount: pack.amount },
+  };
+}
+
+export function claimAttendanceReward(user, day) {
+  const dayNum = Number(day);
+  if (!Number.isInteger(dayNum) || dayNum < 1 || dayNum > 7) {
+    return { ok: false, status: 400, message: '유효하지 않은 출석 일차입니다.' };
+  }
+
+  const results = getResults(user);
+  const attendance = buildAttendance(results, user);
+  const target = attendance.find((item) => item.day === dayNum);
+
+  if (!target) return { ok: false, status: 404, message: '출석 보상을 찾을 수 없습니다.' };
+  if (target.isClaimed) return { ok: false, status: 400, message: '이미 받은 보상이에요.' };
+  if (!target.claimable) {
+    return { ok: false, status: 400, message: '아직 보상을 받을 수 없어요. 오늘 학습 후 다시 시도해주세요.' };
+  }
+
+  const wallet = getWallet(user);
+  if (target.rewardType === 'coin') wallet.bonusCoins += target.rewardAmount;
+  else wallet.bonusGems += target.rewardAmount;
+
+  getClaimedAttendanceDays(user).add(dayNum);
+
+  return {
+    ok: true,
+    message: `${target.reward}을(를) 받았어요!`,
+    balance: getRewards(user).balance,
+    attendance: buildAttendance(results, user),
+  };
 }
 
 export function getSettings(user) {
@@ -314,6 +599,126 @@ export function updateSettings(user, payload) {
   }
 
   return settings;
+}
+
+export function getNotifications(user) {
+  const settings = getSettings(user);
+  const prefs = settings.notifications;
+  const readSet = getReadNotificationIds(user);
+  const items = buildNotificationItems(user).filter((item) => {
+    if (item.type === 'study' && !prefs.studyNotification) return false;
+    if (item.type === 'reward' && !prefs.rewardNotification) return false;
+    if (item.type === 'attendance' && !prefs.attendanceNotification) return false;
+    if (item.type === 'report' && !prefs.parentReportNotification) return false;
+    return true;
+  });
+
+  const withReadState = items.map((item) => ({
+    ...item,
+    read: readSet.has(item.id),
+  }));
+
+  return {
+    items: withReadState,
+    unreadCount: withReadState.filter((item) => !item.read).length,
+  };
+}
+
+export function markNotificationRead(user, notificationId) {
+  getReadNotificationIds(user).add(notificationId);
+  return getNotifications(user);
+}
+
+export function markAllNotificationsRead(user) {
+  const readSet = getReadNotificationIds(user);
+  buildNotificationItems(user).forEach((item) => readSet.add(item.id));
+  return getNotifications(user);
+}
+
+function getReadNotificationIds(user) {
+  if (!state.readNotificationIdsByUserId.has(user.uid)) {
+    state.readNotificationIdsByUserId.set(user.uid, new Set());
+  }
+  return state.readNotificationIdsByUserId.get(user.uid);
+}
+
+function buildNotificationItems(user) {
+  const results = getResults(user);
+  const items = [];
+  const today = new Date().toISOString();
+
+  getClaimableMissions(user).forEach((mission) => {
+    items.push({
+      id: `mission-${mission.id}`,
+      type: 'reward',
+      title: '보상 미션 완료!',
+      message: `${mission.title} 보상(${mission.rewardLabel})을 받을 수 있어요.`,
+      path: '/rewards',
+      createdAt: today,
+    });
+  });
+
+  if (countToday(results) === 0) {
+    items.push({
+      id: 'study-today',
+      type: 'study',
+      title: '오늘의 학습',
+      message: '버니와 함께 발음 연습을 시작해보세요!',
+      path: '/learning',
+      createdAt: today,
+    });
+  }
+
+  const attendance = buildAttendance(results, user);
+  const claimableDay = attendance.find((day) => day.claimable);
+  if (claimableDay) {
+    items.push({
+      id: `attendance-claim-${claimableDay.day}`,
+      type: 'attendance',
+      title: '출석 보상 수령 가능',
+      message: `${claimableDay.label} 출석 보상(${claimableDay.reward})을 받을 수 있어요.`,
+      path: '/rewards',
+      createdAt: today,
+    });
+  }
+
+  const activeDay = attendance.find((day) => day.isActive && !day.isCompleted);
+  if (activeDay) {
+    items.push({
+      id: `attendance-day-${activeDay.day}`,
+      type: 'attendance',
+      title: '출석 보상 준비 완료',
+      message: `${activeDay.label} 출석 보상(${activeDay.reward})을 확인해보세요.`,
+      path: '/rewards',
+      createdAt: today,
+    });
+  }
+
+  const latest = results.at(-1);
+  if (latest && latest.accuracy >= 80) {
+    items.push({
+      id: `record-${latest.id}`,
+      type: 'study',
+      title: '학습 기록 업데이트',
+      message: `${latest.targetWord || '연습'}에서 ${latest.accuracy}%를 기록했어요!`,
+      path: '/history',
+      createdAt: latest.createdAt,
+    });
+  }
+
+  const settings = getSettings(user);
+  if (settings.parent.weeklyReportEnabled) {
+    items.push({
+      id: 'parent-weekly-report',
+      type: 'report',
+      title: '보호자 리포트',
+      message: '이번 주 학습 리포트가 준비되었어요.',
+      path: '/history',
+      createdAt: today,
+    });
+  }
+
+  return items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
 const missionRewardCoins = {
@@ -444,16 +849,36 @@ function buildBadges(results) {
   return badges;
 }
 
-function buildAttendance(results) {
+function getAttendanceReward(day) {
+  if (day === 7) return { reward: '200 코인', rewardType: 'coin', rewardAmount: 200 };
+  if (day % 3 === 0) return { reward: '보석 1', rewardType: 'gem', rewardAmount: 1 };
+  return { reward: '50 코인', rewardType: 'coin', rewardAmount: 50 };
+}
+
+function buildAttendance(results, user) {
   const completedDays = Math.min(uniqueStudyDays(results), 7);
+  const claimed = getClaimedAttendanceDays(user);
+  const studiedToday = countToday(results) > 0;
+  const firstUnclaimed = Array.from({ length: completedDays }, (_, index) => index + 1).find(
+    (day) => !claimed.has(day),
+  );
+
   return Array.from({ length: 7 }, (_, index) => {
     const day = index + 1;
+    const { reward, rewardType, rewardAmount } = getAttendanceReward(day);
+    const isClaimed = claimed.has(day);
+    const isCompleted = day <= completedDays;
+
     return {
       day,
       label: `${day}일차`,
-      reward: day === 7 ? '200 코인' : day % 3 === 0 ? '보석 1' : '50 코인',
+      reward,
+      rewardType,
+      rewardAmount,
       isActive: day === completedDays + 1,
-      isCompleted: day <= completedDays,
+      isCompleted,
+      isClaimed,
+      claimable: isCompleted && !isClaimed && studiedToday && day === firstUnclaimed,
     };
   });
 }
@@ -463,7 +888,7 @@ function defaultSettings() {
     notifications: {
       studyNotification: true,
       attendanceNotification: true,
-      rewardNotification: false,
+      rewardNotification: true,
       parentReportNotification: true,
     },
     learning: {
