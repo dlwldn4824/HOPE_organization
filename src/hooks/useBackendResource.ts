@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { authFetch } from '../utils/authFetch';
 
 export const DATA_UPDATED_EVENT = 'hope:data-updated';
 
@@ -11,20 +12,13 @@ export function useBackendResource<T>(path: string, enabled: boolean) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!enabled) {
-      setData(null);
-      setError(null);
-      return;
-    }
+    if (!enabled) return;
 
     let cancelled = false;
 
     const load = async () => {
       try {
-        const token = sessionStorage.getItem('hope_token');
-        const response = await fetch(path, {
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-        });
+        const response = await authFetch(path);
         const payload = (await response.json()) as T;
 
         if (!response.ok) {
@@ -51,5 +45,8 @@ export function useBackendResource<T>(path: string, enabled: boolean) {
     };
   }, [enabled, path]);
 
-  return { data, error };
+  return {
+    data: enabled ? data : null,
+    error: enabled ? error : null,
+  };
 }

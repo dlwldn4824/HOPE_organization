@@ -338,44 +338,66 @@ export function getLearningData(user) {
   };
 }
 
+const PITCH_POOL = [
+  { targetWord: '아', targetHz: 196, targetPhonemes: '["a"]', hint: '낮은 "아" 소리를 길게 내보세요' },
+  { targetWord: '우', targetHz: 220, targetPhonemes: '["u"]', hint: '조금 더 높은 "우" 소리를 내보세요' },
+  { targetWord: '이', targetHz: 262, targetPhonemes: '["i"]', hint: '밝은 "이" 소리를 내보세요' },
+  { targetWord: '오', targetHz: 294, targetPhonemes: '["o"]', hint: '둥근 "오" 소리를 내보세요' },
+  { targetWord: '에', targetHz: 330, targetPhonemes: '["e"]', hint: '가장 높은 "에" 소리를 내보세요' },
+  { targetWord: '으', targetHz: 175, targetPhonemes: '["ɯ"]', hint: '낮고 짧은 "으" 소리를 내보세요' },
+  { targetWord: '애', targetHz: 247, targetPhonemes: '["ɛ"]', hint: '입을 크게 벌려 "애" 소리를 내보세요' },
+  { targetWord: '야', targetHz: 350, targetPhonemes: '["j","a"]', hint: '높고 또렷한 "야" 소리를 내보세요' },
+];
+
+const MONSTER_POOL = [
+  { targetWord: '사과', targetPhonemes: '["s","a","g","w","a"]' },
+  { targetWord: '사자', targetPhonemes: '["s","a","j","a"]' },
+  { targetWord: '나무', targetPhonemes: '["n","a","m","u"]' },
+  { targetWord: '고양이', targetPhonemes: '["g","o","j","a","ng","i"]' },
+  { targetWord: '바나나', targetPhonemes: '["b","a","n","a","n","a"]' },
+  { targetWord: '라디오', targetPhonemes: '["r","a","d","i","o"]' },
+  { targetWord: '강아지', targetPhonemes: '["g","a","ng","a","j","i"]' },
+  { targetWord: '코끼리', targetPhonemes: '["k","o","kk","i","r","i"]' },
+  { targetWord: '토끼', targetPhonemes: '["t","o","kk","i"]' },
+  { targetWord: '거북이', targetPhonemes: '["g","ʌ","b","u","g","i"]' },
+];
+
+const MATCHING_POOL = [
+  { id: 'cat', word: '고양이', emoji: '🐱', targetPhonemes: '["g","o","j","a","ng","i"]' },
+  { id: 'banana', word: '바나나', emoji: '🍌', targetPhonemes: '["b","a","n","a","n","a"]' },
+  { id: 'apple', word: '사과', emoji: '🍎', targetPhonemes: '["s","a","g","w","a"]' },
+  { id: 'radio', word: '라디오', emoji: '📻', targetPhonemes: '["r","a","d","i","o"]' },
+  { id: 'tree', word: '나무', emoji: '🌳', targetPhonemes: '["n","a","m","u"]' },
+  { id: 'lion', word: '사자', emoji: '🦁', targetPhonemes: '["s","a","j","a"]' },
+  { id: 'dog', word: '강아지', emoji: '🐶', targetPhonemes: '["g","a","ng","a","j","i"]' },
+  { id: 'elephant', word: '코끼리', emoji: '🐘', targetPhonemes: '["k","o","kk","i","r","i"]' },
+  { id: 'rabbit', word: '토끼', emoji: '🐰', targetPhonemes: '["t","o","kk","i"]' },
+  { id: 'turtle', word: '거북이', emoji: '🐢', targetPhonemes: '["g","ʌ","b","u","g","i"]' },
+];
+
+function shuffle(items) {
+  const arr = items.slice();
+  for (let i = arr.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
 export function getGameSession(gameId) {
   if (gameId === 'pitch') {
-    return {
-      gameId: 'pitch',
-      rounds: [
-        { targetWord: '아', targetHz: 196, targetPhonemes: '["a"]', hint: '낮은 "아" 소리를 길게 내보세요' },
-        { targetWord: '우', targetHz: 220, targetPhonemes: '["u"]', hint: '조금 더 높은 "우" 소리를 내보세요' },
-        { targetWord: '이', targetHz: 262, targetPhonemes: '["i"]', hint: '밝은 "이" 소리를 내보세요' },
-        { targetWord: '오', targetHz: 294, targetPhonemes: '["o"]', hint: '둥근 "오" 소리를 내보세요' },
-        { targetWord: '에', targetHz: 330, targetPhonemes: '["e"]', hint: '가장 높은 "에" 소리를 내보세요' },
-      ],
-    };
+    return { gameId: 'pitch', rounds: shuffle(PITCH_POOL).slice(0, 5) };
   }
   if (gameId === 'monster') {
     return {
       gameId: 'monster',
       monsterMaxHp: 100,
       playerMaxHp: 100,
-      rounds: [
-        { targetWord: '사과', targetPhonemes: '["s","a","g","w","a"]' },
-        { targetWord: '사자', targetPhonemes: '["s","a","j","a"]' },
-        { targetWord: '나무', targetPhonemes: '["n","a","m","u"]' },
-        { targetWord: '고양이', targetPhonemes: '["g","o","j","a","ng","i"]' },
-      ],
+      rounds: shuffle(MONSTER_POOL).slice(0, 4),
     };
   }
   if (gameId === 'matching') {
-    return {
-      gameId: 'matching',
-      pairs: [
-        { id: 'cat', word: '고양이', emoji: '🐱', targetPhonemes: '["g","o","j","a","ng","i"]' },
-        { id: 'banana', word: '바나나', emoji: '🍌', targetPhonemes: '["b","a","n","a","n","a"]' },
-        { id: 'apple', word: '사과', emoji: '🍎', targetPhonemes: '["s","a","g","w","a"]' },
-        { id: 'radio', word: '라디오', emoji: '📻', targetPhonemes: '["r","a","d","i","o"]' },
-        { id: 'tree', word: '나무', emoji: '🌳', targetPhonemes: '["n","a","m","u"]' },
-        { id: 'lion', word: '사자', emoji: '🦁', targetPhonemes: '["s","a","j","a"]' },
-      ],
-    };
+    return { gameId: 'matching', pairs: shuffle(MATCHING_POOL).slice(0, 6) };
   }
   return null;
 }

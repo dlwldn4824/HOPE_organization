@@ -95,6 +95,19 @@ async function proxySpeechAnalyze(req, contentType) {
   throw new HttpError(502, lastError?.message || 'Speech analysis failed');
 }
 
+async function checkSpeechUpstream() {
+  try {
+    const response = await fetch(`${SPEECH_COACH_API_BASE}/health`, {
+      signal: AbortSignal.timeout(3_000),
+    });
+    if (!response.ok) return { ok: false, status: response.status };
+    const body = await response.json().catch(() => null);
+    return { ok: true, ...(body && typeof body === 'object' ? body : {}) };
+  } catch (error) {
+    return { ok: false, error: error?.name === 'TimeoutError' ? 'timeout' : 'unreachable' };
+  }
+}
+
 async function handleApi(req, res) {
   const url = new URL(req.url, `http://${req.headers.host}`);
   const method = req.method || 'GET';
@@ -110,10 +123,12 @@ async function handleApi(req, res) {
   }
 
   if (method === 'GET' && path === '/health') {
+    const upstream = await checkSpeechUpstream();
     return sendJson(res, 200, {
       ok: true,
       service: 'hope-backend',
       speechCoachApiBase: SPEECH_COACH_API_BASE,
+      upstream,
     });
   }
 
