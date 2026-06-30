@@ -6,7 +6,6 @@ import {
   claimEventReward,
   claimMission,
   getChargePackages,
-  getDefaultUser,
   getEvents,
   getGameSession,
   getHomeData,
@@ -35,7 +34,8 @@ const SPEECH_COACH_API_BASE = process.env.SPEECH_COACH_API_BASE || 'https://go-n
 function requireUser(req) {
   const token = getBearerToken(req);
   const user = token ? getUserByToken(token) : null;
-  return user ?? getDefaultUser();
+  if (!user) throw new HttpError(401, 'Unauthorized');
+  return user;
 }
 
 async function handleApi(req, res) {
