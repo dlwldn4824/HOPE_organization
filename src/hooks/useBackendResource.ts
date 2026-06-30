@@ -11,11 +11,7 @@ export function useBackendResource<T>(path: string, enabled: boolean) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!enabled) {
-      setData(null);
-      setError(null);
-      return;
-    }
+    if (!enabled) return;
 
     let cancelled = false;
 
@@ -51,5 +47,8 @@ export function useBackendResource<T>(path: string, enabled: boolean) {
     };
   }, [enabled, path]);
 
-  return { data, error };
+  return {
+    data: enabled ? data : null,
+    error: enabled ? error : null,
+  };
 }

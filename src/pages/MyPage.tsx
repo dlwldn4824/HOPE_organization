@@ -6,7 +6,7 @@ import { PlaceholderBox } from '../components/PlaceholderBox';
 import { ProfileCard } from '../components/ProfileCard';
 import { SettingsListCard } from '../components/SettingsListCard';
 import { StatisticsCard } from '../components/StatisticsCard';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/useAuth';
 import { useLogout } from '../hooks/useLogout';
 import { useMyPageData } from '../hooks/useMyPageData';
 

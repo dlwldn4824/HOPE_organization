@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/useAuth';
 import { analyzeSpeech, type SpeechAnalyzeResult } from '../../utils/speechApi';
 import { convertBlobToMonoWav } from '../../utils/wav';
 
@@ -100,7 +100,7 @@ export function useSpeechRecorder(options: UseSpeechRecorderOptions = {}) {
         setIsAnalyzing(false);
       }
     },
-    [maxDurationMs, stopRecording, user?.uid],
+    [maxDurationMs, stopRecording, user],
   );
 
   return {

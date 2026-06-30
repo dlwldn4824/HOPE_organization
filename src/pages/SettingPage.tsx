@@ -31,26 +31,36 @@ export function SettingPage() {
     updatePrivacySettings,
   } = useSettingData();
 
+  // Mirror server defaults into local draft state. React's recommended
+  // "reset state during render" pattern — runs only when the source
+  // reference changes; avoids the cascading-render warning of useEffect.
   const [notifications, setNotifications] = useState(defaultNotifications);
-  const [learning, setLearning] = useState(defaultLearning);
-  const [parent, setParent] = useState(defaultParent);
-  const [privacy, setPrivacy] = useState(defaultPrivacy);
-
-  useEffect(() => {
+  const [notificationsBaseline, setNotificationsBaseline] = useState(defaultNotifications);
+  if (notificationsBaseline !== defaultNotifications) {
+    setNotificationsBaseline(defaultNotifications);
     setNotifications(defaultNotifications);
-  }, [defaultNotifications]);
+  }
 
-  useEffect(() => {
+  const [learning, setLearning] = useState(defaultLearning);
+  const [learningBaseline, setLearningBaseline] = useState(defaultLearning);
+  if (learningBaseline !== defaultLearning) {
+    setLearningBaseline(defaultLearning);
     setLearning(defaultLearning);
-  }, [defaultLearning]);
+  }
 
-  useEffect(() => {
+  const [parent, setParent] = useState(defaultParent);
+  const [parentBaseline, setParentBaseline] = useState(defaultParent);
+  if (parentBaseline !== defaultParent) {
+    setParentBaseline(defaultParent);
     setParent(defaultParent);
-  }, [defaultParent]);
+  }
 
-  useEffect(() => {
+  const [privacy, setPrivacy] = useState(defaultPrivacy);
+  const [privacyBaseline, setPrivacyBaseline] = useState(defaultPrivacy);
+  if (privacyBaseline !== defaultPrivacy) {
+    setPrivacyBaseline(defaultPrivacy);
     setPrivacy(defaultPrivacy);
-  }, [defaultPrivacy]);
+  }
 
   useEffect(() => {
     if (!location.hash) return;

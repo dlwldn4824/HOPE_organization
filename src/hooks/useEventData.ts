@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/useAuth';
 import { useBackendResource } from './useBackendResource';
 import type { EventsApiData } from '../types/event';
 

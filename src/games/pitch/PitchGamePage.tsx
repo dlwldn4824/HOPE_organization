@@ -117,6 +117,10 @@ export function PitchGamePage() {
     }, 1000);
   };
 
+  /* eslint-disable react-hooks/set-state-in-effect --
+     Audio-frame driven scoring loop. reading.frequencyHz updates ~50 times/sec
+     while the player sings, and showGood/score reflect that real-time pitch
+     match. Each re-render IS what we want — visual feedback per audio frame. */
   useEffect(() => {
     if (!isRoundActive || isPaused || !currentRound) return;
 
@@ -137,6 +141,7 @@ export function PitchGamePage() {
       }
     }
   }, [currentRound, isPaused, isRoundActive, pathProgress, reading.frequencyHz, reading.isVoiced]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   useEffect(() => {
     if (isPaused || result) return;

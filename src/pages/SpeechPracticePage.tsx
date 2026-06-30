@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Mic, RotateCcw, Send, Square } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/useAuth';
 import { notifyDataUpdated } from '../hooks/useBackendResource';
 import { analyzeSpeech, saveLearningResult, type SpeechAnalyzeResult } from '../utils/speechApi';
 import { convertBlobToMonoWav } from '../utils/wav';
@@ -54,7 +54,7 @@ export function SpeechPracticePage({ mode }: SpeechPracticePageProps) {
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<BlobPart[]>([]);
   const timeoutRef = useRef<number | null>(null);
-  const sessionStartedAtRef = useRef(Date.now());
+  const sessionStartedAtRef = useRef<number | null>(null);
 
   const statusLabel = useMemo(() => {
     if (isRecording) return '녹음 중';
@@ -138,7 +138,8 @@ export function SpeechPracticePage({ mode }: SpeechPracticePageProps) {
       });
 
       const score = nextResult.score ?? 0;
-      const studyMinutes = Math.max(1, Math.round((Date.now() - sessionStartedAtRef.current) / 60000));
+      const startedAt = sessionStartedAtRef.current ?? Date.now();
+      const studyMinutes = Math.max(1, Math.round((Date.now() - startedAt) / 60000));
       sessionStartedAtRef.current = Date.now();
 
       await saveLearningResult({

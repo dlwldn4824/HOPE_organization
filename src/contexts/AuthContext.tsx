@@ -1,17 +1,7 @@
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useMemo, useState, type ReactNode } from 'react';
 import type { SignupFormData } from '../types/auth';
 import type { UserProfile } from '../types/home';
-
-interface AuthContextValue {
-  user: UserProfile | null;
-  token: string | null;
-  isLoggedIn: boolean;
-  login: (profile?: Partial<UserProfile>) => void;
-  loginWithCredentials: (identifier: string, password: string) => Promise<void>;
-  signupWithForm: (form: SignupFormData) => Promise<void>;
-  updateProfile: (profile: Partial<UserProfile>) => void;
-  logout: () => void;
-}
+import { AuthContext } from './useAuth';
 
 interface AuthResponse {
   token: string;
@@ -28,8 +18,6 @@ const DEMO_USER: UserProfile = {
   maxExp: 100,
   star: 0,
 };
-
-const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(() => {
@@ -124,10 +112,4 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
-
-export function useAuth() {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
-  return ctx;
 }
