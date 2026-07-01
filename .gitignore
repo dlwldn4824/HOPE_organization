@@ -48,3 +48,11 @@ wandb/
 docs/
 !docs/API_*.md
 !docs/API_*.txt
+
+# 팀원 녹음·평가 결과 (목소리·이름 등 개인정보 — Git 제외)
+voice/
+voice_wav16k/
+**/*.m4a
+장원준/
+eval_*.csv
+eval_*.json
