@@ -42,6 +42,13 @@ class ForcedAligner:
         frame_logits: torch.Tensor,
         predicted_phoneme_indices: torch.Tensor,
     ) -> list[PhonemeBoundary]:
+        # 파이프라인은 배치 차원이 있는 (1, T, V) / (1, P) 로 넘기기도 하고
+        # 배치 없이 (T, V) / (P,) 로 넘기기도 한다. 앞의 1-batch 는 자동 제거.
+        if frame_logits.ndim == 3 and frame_logits.shape[0] == 1:
+            frame_logits = frame_logits.squeeze(0)
+        if predicted_phoneme_indices.ndim == 2 and predicted_phoneme_indices.shape[0] == 1:
+            predicted_phoneme_indices = predicted_phoneme_indices.squeeze(0)
+
         if frame_logits.ndim != 2 or predicted_phoneme_indices.ndim != 1:
             raise ValueError(
                 "frame_logits must be (T, V) and predicted_phoneme_indices must be (P,)"
