@@ -1,3 +1,5 @@
+import { authFetch } from './authFetch';
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '';
 
 export interface SpeechAnalyzeInput {
@@ -42,7 +44,7 @@ export async function analyzeSpeech(input: SpeechAnalyzeInput): Promise<SpeechAn
     formData.append('user_id', input.userId.trim());
   }
 
-  const response = await fetch(`${API_BASE_URL}/api/speech/analyze`, {
+  const response = await authFetch(`${API_BASE_URL}/api/speech/analyze`, {
     method: 'POST',
     body: formData,
   });
@@ -63,13 +65,9 @@ export async function analyzeSpeech(input: SpeechAnalyzeInput): Promise<SpeechAn
 }
 
 export async function saveLearningResult(input: LearningResultInput) {
-  const token = sessionStorage.getItem('hope_token');
-  const response = await fetch(`${API_BASE_URL}/api/learning/results`, {
+  const response = await authFetch(`${API_BASE_URL}/api/learning/results`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(input),
   });
 
