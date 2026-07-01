@@ -1,0 +1,49 @@
+# HOPE 백엔드 배포 (Harvester 서버 · Docker Compose · Cloudflare Tunnel)
+# 자세한 절차: docs/DEPLOY.md
+#
+# 라우팅: hope.harvester.kr  ─cf tunnel─▶  Harvester localhost:8093 ─▶ 컨테이너 :4000
+# 게임 인프라(/root/dduckyee)의 cloudflared 컨테이너를 그대로 재사용한다.
+
+services:
+  hope-backend:
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+    container_name: hope-backend
+    environment:
+      NODE_ENV: production
+      PORT: "4000"
+      HOPE_DB_PATH: "/app/data/hope.db"
+      HOPE_TOKEN_TTL_HOURS: "${HOPE_TOKEN_TTL_HOURS:-24}"
+      SPEECH_COACH_API_BASE: "${SPEECH_COACH_API_BASE:-https://go-neung.activejang.com}"
+      SPEECH_TIMEOUT_MS: "${SPEECH_TIMEOUT_MS:-15000}"
+      SPEECH_RETRIES: "${SPEECH_RETRIES:-1}"
+      SPEECH_MAX_BODY_BYTES: "${SPEECH_MAX_BODY_BYTES:-10485760}"
+      LOG_LEVEL: "${LOG_LEVEL:-info}"
+      CORS_ORIGIN: "${CORS_ORIGIN:-*}"
+    ports:
+      # 호스트 8093 (예약된 포트 없음, dduckyee 8090-8095 라인의 유일한 빈 슬롯)
+      - "8093:4000"
+    volumes:
+      - hopedata:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://localhost:4000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  hopedata:
+    # SQLite 파일 (backend/data/hope.db) 이 여기에 저장된다.
+    # 컨테이너 재빌드/재시작해도 유지. 완전 삭제하려면 `docker compose down -v`.
