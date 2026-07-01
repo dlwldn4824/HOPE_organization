@@ -56,7 +56,12 @@ class ForcedAligner:
         if predicted_phoneme_indices.numel() == 0:
             return []
 
-        if self._has_torchaudio:
+        # torchaudio.functional.forced_align 은 target 에 blank 가 있으면
+        # ValueError 를 던진다. 파이프라인이 아직 실제 음소 인덱스 매핑을
+        # 하지 않아 all-zero (=blank) 를 넘길 수 있으므로 감지 시 uniform 폴백.
+        has_blank = bool((predicted_phoneme_indices == self.blank_idx).any().item())
+
+        if self._has_torchaudio and not has_blank:
             return self._align_with_torchaudio(frame_logits, predicted_phoneme_indices)
         return self._align_uniform(frame_logits, predicted_phoneme_indices)
 
