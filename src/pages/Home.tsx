@@ -41,24 +41,23 @@ export function Home() {
           <div className="mx-auto max-w-[1200px] space-y-5 px-4 sm:px-6 lg:space-y-6 lg:px-8">
             <GreetingSection isLoggedIn={isLoggedIn} nickname={user?.nickname} />
 
-            {/* Row 1 — Desktop 3-col / Tablet 2-col / Mobile 1-col */}
-            <div className="-mt-18 grid grid-cols-1 items-stretch gap-5 md:grid-cols-2 xl:grid-cols-3">
+            {/* Row 1 — 오늘의 미션 + PCC */}
+            <div className="-mt-18 grid grid-cols-1 items-stretch gap-5 md:grid-cols-2">
               <MissionCard isLoggedIn={isLoggedIn} mission={mission} />
               <PCCCard
                 isLoggedIn={isLoggedIn}
                 pccHistory={pccHistory}
                 averagePcc={averagePcc}
               />
-              <div className="md:col-span-2 xl:col-span-1">
-                <CharacterCard isLoggedIn={isLoggedIn} user={user} gemCount={gemCount} />
-              </div>
             </div>
 
-            {/* Row 2 */}
-            <div className="grid grid-cols-1 items-stretch gap-5 xl:grid-cols-2">
+            {/* Row 2 — 내 캐릭터 + 맞춤 추천 연습 */}
+            <div className="grid grid-cols-1 items-stretch gap-5 md:grid-cols-2">
+              <CharacterCard isLoggedIn={isLoggedIn} user={user} gemCount={gemCount} />
               <RecommendationCard isLoggedIn={isLoggedIn} recommendations={recommendations} />
-              <BadgeCard isLoggedIn={isLoggedIn} badges={badges} />
             </div>
+
+            <BadgeCard isLoggedIn={isLoggedIn} badges={badges} />
           </div>
         </main>
       </div>

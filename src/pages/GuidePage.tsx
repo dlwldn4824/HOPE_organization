@@ -102,10 +102,10 @@ export function GuidePage() {
               <GuideSection id="games" icon={Gamepad2} title="게임 가이드">
                 <div className="space-y-4">
                   <div className="rounded-2xl bg-gray-50 p-4">
-                    <h3 className="font-bold text-hope-text">피치 맞추기</h3>
+                    <h3 className="font-bold text-hope-text">발음 따라하기</h3>
                     <p className="mt-1">
-                      마이크로 목소리의 높낮이를 맞춰보세요. 오선 위의 목표 음에 맞추면 GOOD
-                      판정을 받습니다. 5라운드를 완료하면 결과가 저장됩니다.
+                      AI가 들려주는 발음을 듣고 똑같이 따라하세요. 발음 유사도가 95% 이상이면
+                      성공하고 다음 단어로 넘어갑니다.
                     </p>
                   </div>
                   <div className="rounded-2xl bg-gray-50 p-4">
@@ -116,18 +116,10 @@ export function GuidePage() {
                     </p>
                   </div>
                   <div className="rounded-2xl bg-gray-50 p-4">
-                    <h3 className="font-bold text-hope-text">발음 카드 짝맞추기</h3>
-                    <p className="mt-1">
-                      카드를 뒤집어 같은 단어 쌍을 찾으세요. 짝을 맞출 때 마이크로 발음을
-                      확인하며, 정확도 65% 이상이면 매칭 성공입니다.
-                    </p>
-                  </div>
-                  <div className="rounded-2xl bg-gray-50 p-4">
                     <h3 className="font-bold text-hope-text">발음 두더지 잡기</h3>
                     <p className="mt-1">
-                      단어를 또렷하게 발음해 정확도를 통과하면 두더지 잡기가 시작됩니다. 정답
-                      발음 말풍선(초록)만 망치로 잡고, 틀린 발음(빨강)은 피하세요. 잡은 두더지
-                      수만큼 코인을 받을 수 있어요.
+                      1분 동안 화면에 나온 단어를 말해 두더지를 잡아요. 발음이 정확할수록 점수가
+                      높아지고, 5마리를 잡으면 좋은 보상을 받을 수 있어요.
                     </p>
                   </div>
                 </div>

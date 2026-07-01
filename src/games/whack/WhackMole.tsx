@@ -16,14 +16,15 @@ export function WhackMole({ x, y, src, label, phase }: WhackMoleProps) {
   const moleWidth = `${(WHACK_MOLE_SIZE.width / WHACK_DESIGN.width) * 100}cqw`;
   const moleHeight = `${(WHACK_MOLE_SIZE.height / WHACK_DESIGN.width) * 100}cqw`;
 
+  const isCaught = phase === 'caught';
   const translateY =
-    phase === 'rising' ? '55%' : phase === 'caught' ? '70%' : phase === 'hiding' ? '80%' : '0%';
-  const scale = phase === 'caught' ? 0.88 : 1;
+    phase === 'rising' ? '55%' : isCaught ? '62%' : phase === 'hiding' ? '80%' : '0%';
+  const scale = isCaught ? 1.05 : 1;
   const opacity = phase === 'hiding' ? 0 : 1;
 
   return (
     <div
-      className="pointer-events-none absolute z-10"
+      className={`pointer-events-none absolute z-10 ${isCaught ? 'animate-whack-caught' : ''}`}
       style={{
         left: pos.left,
         top: pos.top,
@@ -32,23 +33,30 @@ export function WhackMole({ x, y, src, label, phase }: WhackMoleProps) {
         transition:
           phase === 'rising'
             ? 'transform 0.35s cubic-bezier(0.34, 1.4, 0.64, 1), opacity 0.25s'
-            : phase === 'caught' || phase === 'hiding'
-              ? 'transform 0.3s ease-in, opacity 0.3s'
-              : 'transform 0.2s ease-out',
+            : isCaught
+              ? 'transform 0.2s cubic-bezier(0.34, 1.4, 0.64, 1), opacity 0.2s'
+              : phase === 'hiding'
+                ? 'transform 0.3s ease-in, opacity 0.3s'
+                : 'transform 0.2s ease-out',
         transformOrigin: 'bottom center',
       }}
     >
       <div
-        className={`mb-1 whitespace-nowrap rounded-2xl bg-white px-3 py-1.5 text-center text-sm font-black text-hope-green shadow-md ring-2 ring-hope-green/40 sm:text-base ${
-          phase === 'up' || phase === 'rising' ? 'animate-whack-bubble' : ''
-        }`}
+        className={`mb-1 whitespace-nowrap rounded-2xl px-3 py-1.5 text-center text-sm font-black shadow-md sm:text-base ${
+          isCaught
+            ? 'bg-amber-100 text-amber-700 ring-2 ring-amber-400'
+            : 'bg-white text-hope-green ring-2 ring-hope-green/40'
+        } ${phase === 'up' || phase === 'rising' ? 'animate-whack-bubble' : ''}`}
       >
+        {isCaught ? '✓ ' : ''}
         {label}
       </div>
       <img
-        src={phase === 'caught' ? WHACK_ASSETS.moleHit : src}
+        src={isCaught ? WHACK_ASSETS.moleHit : src}
         alt=""
-        className={`mx-auto block select-none object-contain ${phase === 'up' ? 'animate-whack-bounce' : ''}`}
+        className={`mx-auto block select-none object-contain ${
+          phase === 'up' ? 'animate-whack-bounce' : isCaught ? 'drop-shadow-[0_8px_12px_rgba(0,0,0,0.35)]' : ''
+        }`}
         style={{ width: moleWidth, height: moleHeight }}
         draggable={false}
       />

@@ -7,14 +7,17 @@ import { useSpeechRecorder } from '../shared/useSpeechRecorder';
 import { useGameSession } from '../../hooks/useGameSession';
 import type { GameResultSummary } from '../../types/games';
 import { WhackBoard, type WhackRoundResult } from './WhackBoard';
-import { computeWhackGemBonus, computeWhackRoundCoins, WHACK_GAME_DURATION_SECONDS } from './whackRewards';
+import { computeWhackGemBonus, computeWhackRoundCoins, computeWhackStars, WHACK_GAME_DURATION_SECONDS, WHACK_MOLE_GOAL, WHACK_RECORD_MS } from './whackRewards';
 
 type Phase = 'whack' | 'finished';
 
 export function WhackGamePage() {
   const { session } = useGameSession('whack');
   const { resetSession, submitResult } = useGameResult('whack');
-  const { recordAudio, analyzeAudio } = useSpeechRecorder({ maxDurationMs: 1500 });
+  const { recordAudio, analyzeAudio, prepareMicrophone, releaseMicrophone } = useSpeechRecorder({
+    maxDurationMs: WHACK_RECORD_MS,
+    keepStreamOpen: true,
+  });
 
   const [phase, setPhase] = useState<Phase>('whack');
   const [totalCoins, setTotalCoins] = useState(0);
@@ -31,6 +34,7 @@ export function WhackGamePage() {
             : 0;
       const coins = computeWhackRoundCoins(accuracy, roundResult.caught);
       const gems = computeWhackGemBonus(accuracy, roundResult.caught);
+      const earnedStars = computeWhackStars(roundResult.caught, accuracy);
 
       setTotalCoins(coins);
       setTotalGems(gems);
@@ -38,8 +42,9 @@ export function WhackGamePage() {
       const summary = await submitResult({
         targetWord: session.rounds.map((round) => round.targetWord).join(', '),
         accuracy,
-        won: true,
-        message: `두더지 ${roundResult.caught}마리를 잡았어요! 코인 +${coins}${gems ? `, 보석 +${gems}` : ''}`,
+        earnedStars,
+        won: roundResult.caught > 0,
+        message: `두더지 ${roundResult.caught}/${WHACK_MOLE_GOAL}마리! 코인 +${coins}${gems ? `, 보석 +${gems}` : ''}`,
         analysis: { totalMolesCaught: roundResult.caught, totalCoins: coins, totalGems: gems },
       });
 
@@ -68,7 +73,7 @@ export function WhackGamePage() {
     <>
       <GameShell
         title="발음 두더지 잡기"
-        subtitle={phase === 'whack' ? '나온 단어를 말하면 발음 정확도에 따라 점수를 받아요!' : undefined}
+        subtitle={phase === 'whack' ? `1분 동안 두더지 ${WHACK_MOLE_GOAL}마리를 목표로 잡아보세요!` : undefined}
         statusLabel={phase === 'whack' ? '두더지 잡기' : '완료'}
         mainClassName={phase === 'whack' ? 'max-w-[960px]' : undefined}
         hud={
@@ -85,6 +90,8 @@ export function WhackGamePage() {
             durationSeconds={WHACK_GAME_DURATION_SECONDS}
             recordAudio={recordAudio}
             analyzeAudio={analyzeAudio}
+            prepareMicrophone={prepareMicrophone}
+            releaseMicrophone={releaseMicrophone}
             onComplete={(roundResult) => void finishGame(roundResult)}
           />
         ) : null}

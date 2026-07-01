@@ -1,17 +1,19 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { WhackRound } from '../../types/games';
 import type { SpeechAnalyzeResult } from '../../utils/speechApi';
-import { WhackScene, type SceneMole } from './WhackScene';
+import { WhackScene, type CatchEffect, type SceneMole } from './WhackScene';
 import {
   WHACK_GAME_DURATION_SECONDS,
-  WHACK_LISTEN_INTERVAL_MS,
+  WHACK_LISTEN_COOLDOWN_MS,
   WHACK_MAX_ACTIVE_MOLES,
+  WHACK_MOLE_CAUGHT_MS,
   WHACK_MOLE_HIDE_MS,
   WHACK_MOLE_VISIBLE_MS,
   WHACK_SPAWN_INTERVAL_MS,
   WHACK_VOICE_PASS_THRESHOLD,
   computeWhackCatchScore,
 } from './whackRewards';
+import { playWhackCatchSound } from './whackSfx';
 import { WHACK_MOLE_SLOTS, WHACK_TEST_SLOT_ID } from './whackLayout';
 
 interface ActiveMole {
@@ -41,6 +43,8 @@ interface WhackBoardProps {
   durationSeconds?: number;
   recordAudio: () => Promise<Blob>;
   analyzeAudio: AnalyzeAudio;
+  prepareMicrophone: () => Promise<MediaStream>;
+  releaseMicrophone: () => void;
   onComplete: (result: WhackRoundResult) => void;
 }
 
@@ -66,15 +70,22 @@ export function WhackBoard({
   durationSeconds = WHACK_GAME_DURATION_SECONDS,
   recordAudio,
   analyzeAudio,
+  prepareMicrophone,
+  releaseMicrophone,
   onComplete,
 }: WhackBoardProps) {
   const [timeLeft, setTimeLeft] = useState(durationSeconds);
   const [score, setScore] = useState(0);
   const [caught, setCaught] = useState(0);
   const [moles, setMoles] = useState<ActiveMole[]>([]);
+  const [catchEffects, setCatchEffects] = useState<CatchEffect[]>([]);
   const [isListening, setIsListening] = useState(false);
   const [gameOver, setGameOver] = useState(false);
+  const [scorePulseKey, setScorePulseKey] = useState(0);
+  const [sceneShakeKey, setSceneShakeKey] = useState(0);
 
+  const effectIdRef = useRef(0);
+  const feedbackKeyRef = useRef(0);
   const moleIdRef = useRef(0);
   const finishedRef = useRef(false);
   const statsRef = useRef<WhackRoundResult>({ caught: 0, wrong: 0, score: 0, accuracies: [] });
@@ -84,11 +95,12 @@ export function WhackBoard({
   const occupiedSlotsRef = useRef<Set<number>>(new Set());
   const moleTimersRef = useRef<Map<string, MoleTimers>>(new Map());
   const spawnerRef = useRef<number | null>(null);
-  const listenerRef = useRef<number | null>(null);
+  const listenLoopActiveRef = useRef(false);
   const countdownRef = useRef<number | null>(null);
   const onCompleteRef = useRef(onComplete);
   const recordAudioRef = useRef(recordAudio);
   const analyzeAudioRef = useRef(analyzeAudio);
+  const listenForVisibleWordsRef = useRef<() => Promise<void>>(async () => {});
 
   useEffect(() => {
     onCompleteRef.current = onComplete;
@@ -103,6 +115,14 @@ export function WhackBoard({
   useEffect(() => {
     molesRef.current = moles;
   }, [moles]);
+
+  const setMolesSynced = useCallback((updater: (prev: ActiveMole[]) => ActiveMole[]) => {
+    setMoles((prev) => {
+      const next = updater(prev);
+      molesRef.current = next;
+      return next;
+    });
+  }, []);
 
   const clearMoleTimers = useCallback((moleId: string) => {
     const timers = moleTimersRef.current.get(moleId);
@@ -123,18 +143,18 @@ export function WhackBoard({
   const removeMole = useCallback(
     (id: string) => {
       clearMoleTimers(id);
-      setMoles((prev) => {
+      setMolesSynced((prev) => {
         const target = prev.find((mole) => mole.id === id);
         if (target) occupiedSlotsRef.current.delete(target.slotId);
         return prev.filter((mole) => mole.id !== id);
       });
     },
-    [clearMoleTimers],
+    [clearMoleTimers, setMolesSynced],
   );
 
   const hideMole = useCallback(
     (id: string) => {
-      setMoles((prev) =>
+      setMolesSynced((prev) =>
         prev.map((m) => (m.id === id && m.phase !== 'caught' ? { ...m, phase: 'hiding' as const } : m)),
       );
       const remove = window.setTimeout(() => removeMole(id), WHACK_MOLE_HIDE_MS);
@@ -142,21 +162,22 @@ export function WhackBoard({
       if (existing.remove) window.clearTimeout(existing.remove);
       moleTimersRef.current.set(id, { ...existing, remove });
     },
-    [removeMole],
+    [removeMole, setMolesSynced],
   );
 
   const scheduleMoleLifecycle = useCallback(
     (moleId: string) => {
       const rise = window.setTimeout(() => {
-        setMoles((current) =>
+        setMolesSynced((current) =>
           current.map((m) => (m.id === moleId ? { ...m, phase: 'up' as const } : m)),
         );
+        void listenForVisibleWordsRef.current();
       }, 50);
 
       const hide = window.setTimeout(() => hideMole(moleId), WHACK_MOLE_VISIBLE_MS);
       moleTimersRef.current.set(moleId, { rise, hide });
     },
-    [hideMole],
+    [hideMole, setMolesSynced],
   );
 
   const endGame = useCallback(() => {
@@ -164,11 +185,10 @@ export function WhackBoard({
     finishedRef.current = true;
 
     if (spawnerRef.current) window.clearInterval(spawnerRef.current);
-    if (listenerRef.current) window.clearInterval(listenerRef.current);
     if (countdownRef.current) window.clearInterval(countdownRef.current);
+    listenLoopActiveRef.current = false;
 
     spawnerRef.current = null;
-    listenerRef.current = null;
     countdownRef.current = null;
 
     clearAllMoleTimers();
@@ -190,15 +210,35 @@ export function WhackBoard({
         score: nextScore,
         accuracies: [...statsRef.current.accuracies, accuracy],
       };
+
+      playWhackCatchSound();
+
+      const slot = WHACK_MOLE_SLOTS.find((s) => s.id === mole.slotId);
+      const effectId = `catch-${effectIdRef.current++}`;
+      if (slot) {
+        setCatchEffects((prev) => [
+          ...prev,
+          { id: effectId, slotId: mole.slotId, x: slot.x, y: slot.y, points },
+        ]);
+        window.setTimeout(() => {
+          setCatchEffects((prev) => prev.filter((e) => e.id !== effectId));
+        }, 700);
+      }
+
+      feedbackKeyRef.current += 1;
+      const pulseKey = feedbackKeyRef.current;
+      setScorePulseKey(pulseKey);
+      setSceneShakeKey(pulseKey);
+
       setCaught(nextCaught);
       setScore(nextScore);
-      setMoles((prev) =>
+      setMolesSynced((prev) =>
         prev.map((m) => (m.id === mole.id ? { ...m, phase: 'caught' as const } : m)),
       );
-      const remove = window.setTimeout(() => removeMole(mole.id), WHACK_MOLE_HIDE_MS);
+      const remove = window.setTimeout(() => removeMole(mole.id), WHACK_MOLE_CAUGHT_MS);
       moleTimersRef.current.set(mole.id, { remove });
     },
-    [clearMoleTimers, removeMole],
+    [clearMoleTimers, removeMole, setMolesSynced],
   );
 
   const listenForVisibleWords = useCallback(async () => {
@@ -212,25 +252,31 @@ export function WhackBoard({
 
     try {
       const audio = await recordAudioRef.current();
-      let best: { mole: ActiveMole; accuracy: number } | null = null;
-
-      for (const mole of active) {
-        try {
-          const analysis = await analyzeAudioRef.current(audio, {
-            targetWord: mole.label,
-            targetPhonemes: mole.targetPhonemes,
-          });
-          const accuracy = analysis.score ?? 0;
-          if (accuracy >= WHACK_VOICE_PASS_THRESHOLD && (!best || accuracy > best.accuracy)) {
-            best = { mole, accuracy };
+      const results = await Promise.all(
+        active.map(async (mole) => {
+          try {
+            const analysis = await analyzeAudioRef.current(audio, {
+              targetWord: mole.label,
+              targetPhonemes: mole.targetPhonemes,
+            });
+            return { mole, accuracy: analysis.score ?? 0 };
+          } catch {
+            return { mole, accuracy: 0 };
           }
-        } catch {
-          // 다른 단어 분석 실패는 무시
-        }
-      }
+        }),
+      );
+
+      const best = results
+        .filter((result) => result.accuracy >= WHACK_VOICE_PASS_THRESHOLD)
+        .sort((a, b) => b.accuracy - a.accuracy)[0];
 
       if (best) {
-        markCaught(best.mole, best.accuracy);
+        const stillUp = molesRef.current.find(
+          (mole) => mole.id === best.mole.id && mole.phase === 'up',
+        );
+        if (stillUp) {
+          markCaught(stillUp, best.accuracy);
+        }
       }
     } catch {
       // 녹음 실패는 다음 주기에 재시도
@@ -239,6 +285,20 @@ export function WhackBoard({
       setIsListening(false);
     }
   }, [markCaught]);
+
+  listenForVisibleWordsRef.current = listenForVisibleWords;
+
+  const runListenLoop = useCallback(async () => {
+    listenLoopActiveRef.current = true;
+
+    while (listenLoopActiveRef.current && !finishedRef.current) {
+      const hasActiveMole = molesRef.current.some((mole) => mole.phase === 'up');
+      if (hasActiveMole && !listeningRef.current) {
+        await listenForVisibleWords();
+      }
+      await new Promise((resolve) => window.setTimeout(resolve, WHACK_LISTEN_COOLDOWN_MS));
+    }
+  }, [listenForVisibleWords]);
 
   const spawnMole = useCallback(() => {
     if (finishedRef.current || roundsRef.current.length === 0) return;
@@ -267,7 +327,7 @@ export function WhackBoard({
       spawnedAt: Date.now(),
     };
 
-    setMoles((prev) => {
+    setMolesSynced((prev) => {
       if (prev.some((m) => m.slotId === slot.id)) {
         occupied.delete(slot.id);
         return prev;
@@ -276,7 +336,7 @@ export function WhackBoard({
     });
 
     scheduleMoleLifecycle(mole.id);
-  }, [scheduleMoleLifecycle]);
+  }, [scheduleMoleLifecycle, setMolesSynced]);
 
   useEffect(() => {
     finishedRef.current = false;
@@ -288,6 +348,13 @@ export function WhackBoard({
     setScore(0);
     setCaught(0);
     setMoles([]);
+    setCatchEffects([]);
+    setScorePulseKey(0);
+    setSceneShakeKey(0);
+
+    void prepareMicrophone().catch(() => {
+      // 마이크 권한 거부 시 녹음 단계에서 재시도
+    });
 
     countdownRef.current = window.setInterval(() => {
       setTimeLeft((prev) => {
@@ -301,18 +368,25 @@ export function WhackBoard({
 
     spawnMole();
     spawnerRef.current = window.setInterval(spawnMole, WHACK_SPAWN_INTERVAL_MS);
-    listenerRef.current = window.setInterval(() => {
-      void listenForVisibleWords();
-    }, WHACK_LISTEN_INTERVAL_MS);
+    void runListenLoop();
 
     return () => {
+      listenLoopActiveRef.current = false;
       if (countdownRef.current) window.clearInterval(countdownRef.current);
       if (spawnerRef.current) window.clearInterval(spawnerRef.current);
-      if (listenerRef.current) window.clearInterval(listenerRef.current);
       clearAllMoleTimers();
       occupiedSlotsRef.current.clear();
+      releaseMicrophone();
     };
-  }, [clearAllMoleTimers, durationSeconds, endGame, listenForVisibleWords, spawnMole]);
+  }, [
+    clearAllMoleTimers,
+    durationSeconds,
+    endGame,
+    prepareMicrophone,
+    releaseMicrophone,
+    runListenLoop,
+    spawnMole,
+  ]);
 
   if (gameOver) {
     return null;
@@ -321,10 +395,13 @@ export function WhackBoard({
   return (
     <WhackScene
       moles={toSceneMoles(moles)}
+      catchEffects={catchEffects}
       timeLeft={timeLeft}
       score={score}
       caught={caught}
       isListening={isListening}
+      scorePulseKey={scorePulseKey}
+      sceneShakeKey={sceneShakeKey}
     />
   );
 }

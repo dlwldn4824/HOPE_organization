@@ -4,7 +4,6 @@ import { BottomNavigation, Sidebar } from '../components/Sidebar';
 import { GameCard } from '../components/GameCard';
 import { HomeHeader } from '../components/HomeHeader';
 import { LearningHero } from '../components/LearningHero';
-import { PlaceholderBox } from '../components/PlaceholderBox';
 import { TipBanner } from '../components/TipBanner';
 import { useLearningData } from '../hooks/useLearningData';
 
@@ -15,13 +14,6 @@ export function LearningPage() {
 
   return (
     <div className="relative min-h-dvh bg-hope-sky">
-      <div className="pointer-events-none absolute inset-0 opacity-30" aria-hidden>
-        <PlaceholderBox
-          label="BACKGROUND IMAGE"
-          className="h-full w-full rounded-none border-none bg-hope-sky/50 text-sm"
-        />
-      </div>
-
       <div className="relative flex min-h-dvh">
         <Sidebar activeMenu="learning" />
 
@@ -29,17 +21,17 @@ export function LearningPage() {
           <HomeHeader isLoggedIn={isLoggedIn} userInfo={userInfo} />
 
           <div className="mx-auto max-w-[1240px] px-4 sm:px-6 lg:px-8">
-            <div className="flex flex-col gap-4 lg:gap-5">
+            <div className="flex flex-col gap-6">
               <LearningHero isLoggedIn={isLoggedIn} status={status} />
 
-              <section className="lg:-mt-4">
-                <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+              <section>
+                <div className="mb-4 flex items-end justify-between gap-3">
                   <div className="min-w-0">
                     <div className="mb-2 flex items-center gap-2">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-hope-green-light text-hope-green">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-hope-green-light text-hope-green sm:h-10 sm:w-10">
                         <BookOpen className="h-5 w-5" strokeWidth={2} />
                       </div>
-                      <h2 className="text-xl font-bold text-hope-text sm:text-2xl">
+                      <h2 className="text-lg font-bold text-hope-text sm:text-xl lg:text-2xl">
                         오늘의 게임을 선택하세요!
                       </h2>
                     </div>
@@ -51,20 +43,20 @@ export function LearningPage() {
                   <button
                     type="button"
                     onClick={() => navigate('/guide#games')}
-                    className="h-11 shrink-0 rounded-2xl border border-hope-green/30 bg-white px-5 text-sm font-bold text-hope-green transition-colors hover:bg-hope-green-light active:scale-[0.99]"
+                    className="hidden h-10 shrink-0 rounded-2xl border border-hope-green/30 bg-white px-4 text-sm font-bold text-hope-green transition-colors hover:bg-hope-green-light active:scale-[0.99] sm:inline-flex sm:items-center"
                   >
                     게임 가이드
                   </button>
                 </div>
 
-                <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+                <div className="grid min-w-0 grid-cols-3 gap-2 sm:gap-4 lg:gap-6">
                   {games.map((game) => (
-                    <GameCard key={game.id} game={game} isLoggedIn={isLoggedIn} />
+                    <GameCard key={game.id} game={game} isLoggedIn={isLoggedIn} compact />
                   ))}
                 </div>
               </section>
 
-            <TipBanner />
+              <TipBanner />
             </div>
           </div>
         </main>

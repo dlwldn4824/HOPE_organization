@@ -1,5 +1,6 @@
-import type { ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { Mic } from 'lucide-react';
+import { WhackCatchBurst } from './WhackCatchBurst';
 import { WhackMole, type MoleVisualPhase } from './WhackMole';
 import {
   WHACK_ASSETS,
@@ -7,6 +8,7 @@ import {
   WHACK_MOLE_SLOTS,
   WHACK_TITLE,
 } from './whackLayout';
+import { WHACK_MOLE_GOAL } from './whackRewards';
 
 export interface SceneMole {
   id: string;
@@ -15,29 +17,54 @@ export interface SceneMole {
   phase: MoleVisualPhase;
 }
 
+export interface CatchEffect {
+  id: string;
+  slotId: number;
+  x: number;
+  y: number;
+  points: number;
+}
+
 interface WhackSceneProps {
   moles: SceneMole[];
+  catchEffects: CatchEffect[];
   timeLeft: number;
   score: number;
   caught: number;
   isListening: boolean;
+  scorePulseKey: number;
+  sceneShakeKey: number;
   footer?: ReactNode;
 }
 
 export function WhackScene({
   moles,
+  catchEffects,
   timeLeft,
   score,
   caught,
   isListening,
+  scorePulseKey,
+  sceneShakeKey,
   footer,
 }: WhackSceneProps) {
+  const sceneRef = useRef<HTMLDivElement>(null);
   const titleFontSize = `${(WHACK_TITLE.fontSize / WHACK_DESIGN.width) * 100}cqw`;
   const titleTop = `${(WHACK_TITLE.y / WHACK_DESIGN.height) * 100}%`;
+
+  useEffect(() => {
+    if (sceneShakeKey === 0) return;
+    const el = sceneRef.current;
+    if (!el) return;
+    el.classList.remove('animate-whack-scene-shake');
+    void el.offsetWidth;
+    el.classList.add('animate-whack-scene-shake');
+  }, [sceneShakeKey]);
 
   return (
     <div className="w-full">
       <div
+        ref={sceneRef}
         className="relative mx-auto w-full overflow-hidden rounded-[20px] shadow-lg ring-1 ring-black/5"
         style={{
           aspectRatio: `${WHACK_DESIGN.width} / ${WHACK_DESIGN.height}`,
@@ -69,13 +96,31 @@ export function WhackScene({
           </div>
           <div className="rounded-2xl bg-black/45 px-3 py-2 text-center text-white backdrop-blur-sm">
             <p className="text-[10px] font-semibold opacity-80">점수</p>
-            <p className="text-xl font-black leading-none text-lime-300">{score}</p>
+            <p
+              key={scorePulseKey}
+              className={`text-xl font-black leading-none text-lime-300 ${
+                scorePulseKey > 0 ? 'animate-whack-score-pulse' : ''
+              }`}
+            >
+              {score}
+            </p>
           </div>
           <div className="rounded-2xl bg-black/45 px-3 py-2 text-right text-white backdrop-blur-sm">
             <p className="text-[10px] font-semibold opacity-80">잡은 수</p>
-            <p className="text-xl font-black leading-none text-lime-300">{caught}</p>
+            <p
+              key={`caught-${scorePulseKey}`}
+              className={`text-xl font-black leading-none text-lime-300 ${
+                scorePulseKey > 0 ? 'animate-whack-score-pulse' : ''
+              }`}
+            >
+              {caught}
+            </p>
           </div>
         </div>
+
+        {catchEffects.map((effect) => (
+          <WhackCatchBurst key={effect.id} x={effect.x} y={effect.y} points={effect.points} />
+        ))}
 
         {WHACK_MOLE_SLOTS.map((slot) => {
           const mole = moles.find((m) => m.slotId === slot.id);
@@ -101,7 +146,9 @@ export function WhackScene({
             </div>
           ) : null}
           <p className="rounded-full bg-black/40 px-4 py-1.5 text-xs font-bold text-white backdrop-blur-sm sm:text-sm">
-            나온 단어 중 하나를 또렷하게 말하면 정확도에 따라 점수를 받아요!
+            {isListening
+              ? '지금 말해 주세요! 화면에 나온 단어를 또렷하게 발음해요'
+              : `나온 단어를 말해 두더지를 잡아요 · 목표 ${WHACK_MOLE_GOAL}마리`}
           </p>
         </div>
       </div>

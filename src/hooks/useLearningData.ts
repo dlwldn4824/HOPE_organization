@@ -14,14 +14,23 @@ interface LearningApiData {
 function mergeLearningGames(apiGames: LearningGame[] | undefined): LearningGame[] {
   if (!apiGames?.length) return LEARNING_GAMES;
 
-  const byId = new Map(apiGames.map((game) => [game.id, game]));
-  for (const fallback of LEARNING_GAMES) {
-    if (!byId.has(fallback.id)) {
-      byId.set(fallback.id, fallback);
-    }
-  }
-
-  return [...byId.values()].sort((a, b) => a.number - b.number);
+  const apiById = new Map(apiGames.map((game) => [game.id, game]));
+  return LEARNING_GAMES.map((fallback) => {
+    const fromApi = apiById.get(fallback.id);
+    if (!fromApi) return fallback;
+    return {
+      ...fallback,
+      bestRecord: fromApi.bestRecord,
+      number: fallback.number,
+      name: fallback.name,
+      description: fallback.description,
+      practiceElement: fallback.practiceElement,
+      path: fallback.path,
+      imageSrc: fallback.imageSrc,
+      imageFallbackSrc: fallback.imageFallbackSrc,
+      imageLabel: fallback.imageLabel,
+    };
+  });
 }
 
 export function useLearningData() {

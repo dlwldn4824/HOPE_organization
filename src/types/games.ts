@@ -4,9 +4,9 @@ export type GamePhase = 'ready' | 'playing' | 'round-end' | 'finished' | 'failed
 
 export interface PitchRound {
   targetWord: string;
-  targetHz: number;
   targetPhonemes: string;
-  hint: string;
+  hint?: string;
+  emoji?: string;
 }
 
 export interface MonsterRound {

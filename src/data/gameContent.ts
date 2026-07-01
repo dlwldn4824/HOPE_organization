@@ -1,11 +1,11 @@
 import type { CardPair, MonsterRound, PitchRound, WhackRound } from '../types/games';
 
 export const PITCH_ROUNDS: PitchRound[] = [
-  { targetWord: '아', targetHz: 196, targetPhonemes: '["a"]', hint: '낮은 "아" 소리를 길게 내보세요' },
-  { targetWord: '우', targetHz: 220, targetPhonemes: '["u"]', hint: '조금 더 높은 "우" 소리를 내보세요' },
-  { targetWord: '이', targetHz: 262, targetPhonemes: '["i"]', hint: '밝은 "이" 소리를 내보세요' },
-  { targetWord: '오', targetHz: 294, targetPhonemes: '["o"]', hint: '둥근 "오" 소리를 내보세요' },
-  { targetWord: '에', targetHz: 330, targetPhonemes: '["e"]', hint: '가장 높은 "에" 소리를 내보세요' },
+  { targetWord: '사과', targetPhonemes: '["s","a","g","w","a"]', emoji: '🍎', hint: 'AI 발음을 듣고 똑같이 따라해 보세요' },
+  { targetWord: '바나나', targetPhonemes: '["b","a","n","a","n","a"]', emoji: '🍌', hint: '음절 길이와 억양을 맞춰보세요' },
+  { targetWord: '기린', targetPhonemes: '["g","i","r","i","n"]', emoji: '🦒' },
+  { targetWord: '고양이', targetPhonemes: '["g","o","j","a","ng","i"]', emoji: '🐱' },
+  { targetWord: '토끼', targetPhonemes: '["t","o","kk","i"]', emoji: '🐰' },
 ];
 
 export const MONSTER_ROUNDS: MonsterRound[] = [
@@ -115,12 +115,11 @@ export const WHACK_ROUNDS: WhackRound[] = [
 ];
 
 export const MATCHING_PAIRS: CardPair[] = [
-  { id: 'cat', word: '고양이', emoji: '🐱', targetPhonemes: '["g","o","j","a","ng","i"]' },
-  { id: 'banana', word: '바나나', emoji: '🍌', targetPhonemes: '["b","a","n","a","n","a"]' },
-  { id: 'apple', word: '사과', emoji: '🍎', targetPhonemes: '["s","a","g","w","a"]' },
-  { id: 'radio', word: '라디오', emoji: '📻', targetPhonemes: '["r","a","d","i","o"]' },
-  { id: 'tree', word: '나무', emoji: '🌳', targetPhonemes: '["n","a","m","u"]' },
-  { id: 'lion', word: '사자', emoji: '🦁', targetPhonemes: '["s","a","j","a"]' },
+  { id: 'step1', word: '사과', emoji: '🍎', targetPhonemes: '["s","a","g","w","a"]' },
+  { id: 'step2', word: '바나나', emoji: '🍌', targetPhonemes: '["b","a","n","a","n","a"]' },
+  { id: 'step3', word: '자전거', emoji: '🚲', targetPhonemes: '["j","a","j","ʌ","n","g","ʌ"]' },
+  { id: 'step4', word: '나는 사과를 좋아해요', emoji: '💬', targetPhonemes: '["n","a","n","ɯ","n","s","a","g","w","a","r","ɯ","l","j","o","a","h","a","e","j","o"]' },
+  { id: 'step5', word: '오늘 날씨가 정말 좋아요', emoji: '🌤️', targetPhonemes: '["o","n","ɯ","l","n","a","l","ss","i","g","a","j","ʌ","ng","m","a","l","j","o","a","j","o"]' },
 ];
 
 export const PITCH_MIN_HZ = 180;

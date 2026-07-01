@@ -23,6 +23,13 @@ backend/data/
 .env.local
 deploy/.env
 
+# Research problem-validation
+research/problem-validation/.venv/
+research/problem-validation/.env
+research/problem-validation/**/.ipynb_checkpoints/
+research/problem-validation/data/raw/**
+!research/problem-validation/data/raw/**/sample_*.csv
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

@@ -10,10 +10,13 @@ interface AnalyzeInput {
 
 interface UseSpeechRecorderOptions {
   maxDurationMs?: number;
+  /** 게임 중 마이크 스트림을 유지해 매 녹음마다 권한/준비 지연을 없앱니다 */
+  keepStreamOpen?: boolean;
 }
 
 export function useSpeechRecorder(options: UseSpeechRecorderOptions = {}) {
   const maxDurationMs = options.maxDurationMs ?? 5000;
+  const keepStreamOpen = options.keepStreamOpen ?? false;
   const { user } = useAuth();
   const [isRecording, setIsRecording] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -22,13 +25,43 @@ export function useSpeechRecorder(options: UseSpeechRecorderOptions = {}) {
   const chunksRef = useRef<BlobPart[]>([]);
   const timeoutRef = useRef<number | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const keepStreamOpenRef = useRef(keepStreamOpen);
+
+  useEffect(() => {
+    keepStreamOpenRef.current = keepStreamOpen;
+  }, [keepStreamOpen]);
+
+  const releaseMicrophone = useCallback(() => {
+    if (timeoutRef.current) {
+      window.clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+    recorderRef.current = null;
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+    streamRef.current = null;
+  }, []);
 
   useEffect(() => {
     return () => {
-      if (timeoutRef.current) window.clearTimeout(timeoutRef.current);
-      recorderRef.current?.stream.getTracks().forEach((track) => track.stop());
-      streamRef.current?.getTracks().forEach((track) => track.stop());
+      releaseMicrophone();
     };
+  }, [releaseMicrophone]);
+
+  const prepareMicrophone = useCallback(async () => {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      throw new Error('이 브라우저에서는 마이크 녹음을 사용할 수 없습니다.');
+    }
+    if (streamRef.current?.active) return streamRef.current;
+
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+      },
+    });
+    streamRef.current = stream;
+    return stream;
   }, []);
 
   const stopRecording = useCallback(() => {
@@ -45,12 +78,7 @@ export function useSpeechRecorder(options: UseSpeechRecorderOptions = {}) {
   }, []);
 
   const recordAudio = useCallback(async (): Promise<Blob> => {
-    if (!navigator.mediaDevices?.getUserMedia) {
-      throw new Error('이 브라우저에서는 마이크 녹음을 사용할 수 없습니다.');
-    }
-
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    streamRef.current = stream;
+    const stream = await prepareMicrophone();
     const recorder = new MediaRecorder(stream);
     chunksRef.current = [];
     recorderRef.current = recorder;
@@ -61,8 +89,10 @@ export function useSpeechRecorder(options: UseSpeechRecorderOptions = {}) {
       };
 
       recorder.onstop = () => {
-        stream.getTracks().forEach((track) => track.stop());
-        streamRef.current = null;
+        if (!keepStreamOpenRef.current) {
+          stream.getTracks().forEach((track) => track.stop());
+          streamRef.current = null;
+        }
         resolve(new Blob(chunksRef.current, { type: recorder.mimeType }));
       };
 
@@ -75,7 +105,7 @@ export function useSpeechRecorder(options: UseSpeechRecorderOptions = {}) {
 
     setIsRecording(false);
     return convertBlobToMonoWav(recordedBlob);
-  }, [maxDurationMs, stopRecording]);
+  }, [maxDurationMs, prepareMicrophone, stopRecording]);
 
   const analyzeAudio = useCallback(
     async (audio: Blob, input: AnalyzeInput): Promise<SpeechAnalyzeResult> => {
@@ -119,6 +149,8 @@ export function useSpeechRecorder(options: UseSpeechRecorderOptions = {}) {
     recordAndAnalyze,
     recordAudio,
     analyzeAudio,
+    prepareMicrophone,
+    releaseMicrophone,
     stopRecording,
     clearError: () => setError(null),
   };

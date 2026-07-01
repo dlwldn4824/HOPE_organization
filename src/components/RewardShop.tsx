@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { ShoppingBag } from 'lucide-react';
 import { notifyDataUpdated } from '../hooks/useBackendResource';
 import { purchaseShopItem } from '../utils/rewardApi';
-import type { RewardShopTab, ShopItem } from '../types/reward';
+import type { RewardCurrencyBalance, RewardShopTab, ShopItem } from '../types/reward';
 import { RewardItemCard } from './RewardItemCard';
 
 const CARD_CLASS =
@@ -19,9 +19,17 @@ const TABS: { id: RewardShopTab; label: string }[] = [
 interface RewardShopProps {
   isLoggedIn: boolean;
   items: ShopItem[];
+  balance: RewardCurrencyBalance | null;
 }
 
-export function RewardShop({ isLoggedIn, items }: RewardShopProps) {
+function getInsufficientCurrencyMessage(item: ShopItem): string {
+  if (item.currency === 'coin') {
+    return '코인이 부족해요. 코인 충전 후 다시 시도해 주세요.';
+  }
+  return '보석이 부족해요. 보석 충전 후 다시 시도해 주세요.';
+}
+
+export function RewardShop({ isLoggedIn, items, balance }: RewardShopProps) {
   const [activeTab, setActiveTab] = useState<RewardShopTab>('recommended');
   const [purchasingId, setPurchasingId] = useState<string | null>(null);
 
@@ -38,6 +46,17 @@ export function RewardShop({ isLoggedIn, items }: RewardShopProps) {
       `${item.name}\n${item.price.toLocaleString()} ${currencyLabel}을(를) 사용해 구매할까요?`,
     );
     if (!confirmed) return;
+
+    if (balance) {
+      const affordable =
+        item.currency === 'coin'
+          ? balance.coins >= item.price
+          : balance.gems >= item.price;
+      if (!affordable) {
+        alert(getInsufficientCurrencyMessage(item));
+        return;
+      }
+    }
 
     setPurchasingId(item.id);
 
