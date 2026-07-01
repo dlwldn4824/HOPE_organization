@@ -19,7 +19,7 @@
      │           ↓  Docker network 내부 호출
      ├─ hope-ai 컨테이너 (외부 노출 X, docker network 만)
      │   ├─ Python 3.11 + PyTorch CPU + Wav2Vec2
-     │   ├─ 체크포인트 마운트: /var/lib/hope-checkpoints → /checkpoints (읽기전용)
+     │   ├─ 체크포인트 마운트: ~/hope-checkpoints → /checkpoints (읽기전용)
      │   └─ FastAPI :8000
      │
      └─ cloudflared 컨테이너  (dduckyee 스택 공용, host network)
@@ -98,10 +98,10 @@ chmod 600 ~/hope/deploy/.env
 
 ```bash
 # 체크포인트 저장 디렉토리 생성
-ssh Harvester "sudo mkdir -p /var/lib/hope-checkpoints && sudo chown harvester:harvester /var/lib/hope-checkpoints"
+ssh Harvester "mkdir -p ~/hope-checkpoints"
 
 # 로컬 체크포인트 서버로 전송 (약 1.2GB, 5분 소요 예상)
-scp -r /path/to/checkpoints/stage1b-mix Harvester:/var/lib/hope-checkpoints/
+scp -r /path/to/checkpoints/stage1b-mix Harvester:~/hope-checkpoints/
 
 # Hope-AI 브랜치 소스는 deploy/harvester.sh 가 자동 clone/pull.
 ```

@@ -67,9 +67,9 @@ services:
       MKL_NUM_THREADS: "4"
     volumes:
       # 체크포인트는 이미지에 안 넣고 host volume 으로 주입.
-      # 서버의 /var/lib/hope-checkpoints/stage1b-mix/final/*.safetensors 등.
+      # 서버의 /home/harvester/hope-checkpoints/stage1b-mix/final/*.safetensors 등.
       - type: bind
-        source: /var/lib/hope-checkpoints
+        source: /home/harvester/hope-checkpoints
         target: /checkpoints
         read_only: true
     restart: unless-stopped
