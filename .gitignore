@@ -21,6 +21,7 @@ backend/data/
 *.db-shm
 .env
 .env.local
+deploy/.env
 
 # Editor directories and files
 .vscode/*
