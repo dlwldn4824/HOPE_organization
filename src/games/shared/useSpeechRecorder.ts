@@ -44,54 +44,63 @@ export function useSpeechRecorder(options: UseSpeechRecorderOptions = {}) {
     setIsRecording(false);
   }, []);
 
-  const recordAndAnalyze = useCallback(
-    async (input: AnalyzeInput): Promise<SpeechAnalyzeResult> => {
-      setError(null);
+  const recordAudio = useCallback(async (): Promise<Blob> => {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      throw new Error('이 브라우저에서는 마이크 녹음을 사용할 수 없습니다.');
+    }
 
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    streamRef.current = stream;
+    const recorder = new MediaRecorder(stream);
+    chunksRef.current = [];
+    recorderRef.current = recorder;
+
+    const recordedBlob = await new Promise<Blob>((resolve, reject) => {
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) chunksRef.current.push(event.data);
+      };
+
+      recorder.onstop = () => {
+        stream.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
+        resolve(new Blob(chunksRef.current, { type: recorder.mimeType }));
+      };
+
+      recorder.onerror = () => reject(new Error('녹음 중 오류가 발생했습니다.'));
+
+      recorder.start();
+      setIsRecording(true);
+      timeoutRef.current = window.setTimeout(() => stopRecording(), maxDurationMs);
+    });
+
+    setIsRecording(false);
+    return convertBlobToMonoWav(recordedBlob);
+  }, [maxDurationMs, stopRecording]);
+
+  const analyzeAudio = useCallback(
+    async (audio: Blob, input: AnalyzeInput): Promise<SpeechAnalyzeResult> => {
       if (!input.targetWord.trim()) {
         throw new Error('목표 단어가 없습니다.');
       }
 
-      if (!navigator.mediaDevices?.getUserMedia) {
-        throw new Error('이 브라우저에서는 마이크 녹음을 사용할 수 없습니다.');
-      }
+      return analyzeSpeech({
+        audio,
+        targetWord: input.targetWord,
+        targetPhonemes: input.targetPhonemes,
+        userId: user?.uid ?? 'user-001',
+      });
+    },
+    [user?.uid],
+  );
 
+  const recordAndAnalyze = useCallback(
+    async (input: AnalyzeInput): Promise<SpeechAnalyzeResult> => {
+      setError(null);
       setIsAnalyzing(true);
 
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        streamRef.current = stream;
-        const recorder = new MediaRecorder(stream);
-        chunksRef.current = [];
-        recorderRef.current = recorder;
-
-        const recordedBlob = await new Promise<Blob>((resolve, reject) => {
-          recorder.ondataavailable = (event) => {
-            if (event.data.size > 0) chunksRef.current.push(event.data);
-          };
-
-          recorder.onstop = () => {
-            stream.getTracks().forEach((track) => track.stop());
-            streamRef.current = null;
-            resolve(new Blob(chunksRef.current, { type: recorder.mimeType }));
-          };
-
-          recorder.onerror = () => reject(new Error('녹음 중 오류가 발생했습니다.'));
-
-          recorder.start();
-          setIsRecording(true);
-          timeoutRef.current = window.setTimeout(() => stopRecording(), maxDurationMs);
-        });
-
-        setIsRecording(false);
-        const wavBlob = await convertBlobToMonoWav(recordedBlob);
-
-        return await analyzeSpeech({
-          audio: wavBlob,
-          targetWord: input.targetWord,
-          targetPhonemes: input.targetPhonemes,
-          userId: user?.uid ?? 'user-001',
-        });
+        const wavBlob = await recordAudio();
+        return await analyzeAudio(wavBlob, input);
       } catch (caught) {
         const message = caught instanceof Error ? caught.message : '분석 중 오류가 발생했습니다.';
         setError(message);
@@ -100,7 +109,7 @@ export function useSpeechRecorder(options: UseSpeechRecorderOptions = {}) {
         setIsAnalyzing(false);
       }
     },
-    [maxDurationMs, stopRecording, user?.uid],
+    [analyzeAudio, recordAudio],
   );
 
   return {
@@ -108,6 +117,8 @@ export function useSpeechRecorder(options: UseSpeechRecorderOptions = {}) {
     isAnalyzing,
     error,
     recordAndAnalyze,
+    recordAudio,
+    analyzeAudio,
     stopRecording,
     clearError: () => setError(null),
   };

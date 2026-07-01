@@ -4,6 +4,7 @@ import { AuthPage } from './components/AuthPage';
 import { MatchingGamePage } from './games/matching/MatchingGamePage';
 import { MonsterGamePage } from './games/monster/MonsterGamePage';
 import { PitchGamePage } from './games/pitch/PitchGamePage';
+import { WhackGamePage } from './games/whack/WhackGamePage';
 import { Home } from './pages/Home';
 import { LearningPage } from './pages/LearningPage';
 import { LearningRecordPage } from './pages/LearningRecordPage';
@@ -27,6 +28,7 @@ export default function App() {
           <Route path="/learning/pitch" element={<PitchGamePage />} />
           <Route path="/learning/monster" element={<MonsterGamePage />} />
           <Route path="/learning/matching" element={<MatchingGamePage />} />
+          <Route path="/learning/whack" element={<WhackGamePage />} />
           <Route path="/dev/speech/pitch" element={<SpeechPracticePage mode="pitch" />} />
           <Route path="/dev/speech/monster" element={<SpeechPracticePage mode="monster" />} />
           <Route path="/dev/speech/matching" element={<SpeechPracticePage mode="matching" />} />

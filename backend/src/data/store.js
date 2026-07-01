@@ -334,6 +334,7 @@ export function getLearningData(user) {
       learningGame('pitch', 1, '피치 맞추기', '공을 움직여 피치를 맞춰요.', '목소리 높낮이', bestRecord(results, 'pitch'), '/assets/pitch-game-preview.png'),
       learningGame('monster', 2, '몬스터 대결', '정확한 발음으로 몬스터를 물리쳐요.', '발음 정확도', bestRecord(results, 'monster'), '/assets/monster-game-preview.png'),
       learningGame('matching', 3, '발음 카드 짝맞추기', '카드를 뒤집어 발음을 연결해요.', '발음 인식', bestRecord(results, 'matching'), '/assets/matching-game-preview.png'),
+      learningGame('whack', 4, '발음 두더지 잡기', '나온 단어를 말하면 발음 정확도에 따라 점수를 받아요.', '음운 변별', bestRecord(results, 'whack'), '/assets/whack-game-preview.png'),
     ],
   };
 }
@@ -360,6 +361,105 @@ const MONSTER_POOL = [
   { targetWord: '코끼리', targetPhonemes: '["k","o","kk","i","r","i"]' },
   { targetWord: '토끼', targetPhonemes: '["t","o","kk","i"]' },
   { targetWord: '거북이', targetPhonemes: '["g","ʌ","b","u","g","i"]' },
+];
+
+const WHACK_POOL = [
+  {
+    targetWord: '사과',
+    targetPhonemes: '["s","a","g","w","a"]',
+    emoji: '🍎',
+    distractors: [],
+    passThreshold: 65,
+    whackSeconds: 60,
+  },
+  {
+    targetWord: '바나나',
+    targetPhonemes: '["b","a","n","a","n","a"]',
+    emoji: '🍌',
+    distractors: [],
+    passThreshold: 65,
+    whackSeconds: 60,
+  },
+  {
+    targetWord: '기린',
+    targetPhonemes: '["g","i","r","i","n"]',
+    emoji: '🦒',
+    distractors: [],
+    passThreshold: 65,
+    whackSeconds: 60,
+  },
+  {
+    targetWord: '사자',
+    targetPhonemes: '["s","a","j","a"]',
+    emoji: '🦁',
+    distractors: [],
+    passThreshold: 65,
+    whackSeconds: 60,
+  },
+  {
+    targetWord: '나무',
+    targetPhonemes: '["n","a","m","u"]',
+    emoji: '🌳',
+    distractors: [],
+    passThreshold: 65,
+    whackSeconds: 60,
+  },
+  {
+    targetWord: '고양이',
+    targetPhonemes: '["g","o","j","a","ng","i"]',
+    emoji: '🐱',
+    distractors: [],
+    passThreshold: 65,
+    whackSeconds: 60,
+  },
+  {
+    targetWord: '토끼',
+    targetPhonemes: '["t","o","kk","i"]',
+    emoji: '🐰',
+    distractors: [],
+    passThreshold: 65,
+    whackSeconds: 60,
+  },
+  {
+    targetWord: '강아지',
+    targetPhonemes: '["g","a","ng","a","j","i"]',
+    emoji: '🐶',
+    distractors: [],
+    passThreshold: 65,
+    whackSeconds: 60,
+  },
+  {
+    targetWord: '코끼리',
+    targetPhonemes: '["k","o","kk","i","r","i"]',
+    emoji: '🐘',
+    distractors: [],
+    passThreshold: 65,
+    whackSeconds: 60,
+  },
+  {
+    targetWord: '라디오',
+    targetPhonemes: '["r","a","d","i","o"]',
+    emoji: '📻',
+    distractors: [],
+    passThreshold: 65,
+    whackSeconds: 60,
+  },
+  {
+    targetWord: '거북이',
+    targetPhonemes: '["g","ʌ","b","u","g","i"]',
+    emoji: '🐢',
+    distractors: [],
+    passThreshold: 65,
+    whackSeconds: 60,
+  },
+  {
+    targetWord: '자전거',
+    targetPhonemes: '["j","a","j","ʌ","n","g","ʌ"]',
+    emoji: '🚲',
+    distractors: [],
+    passThreshold: 65,
+    whackSeconds: 60,
+  },
 ];
 
 const MATCHING_POOL = [
@@ -398,6 +498,9 @@ export function getGameSession(gameId) {
   }
   if (gameId === 'matching') {
     return { gameId: 'matching', pairs: shuffle(MATCHING_POOL).slice(0, 6) };
+  }
+  if (gameId === 'whack') {
+    return { gameId: 'whack', rounds: WHACK_POOL };
   }
   return null;
 }

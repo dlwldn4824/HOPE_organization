@@ -122,6 +122,14 @@ export function GuidePage() {
                       확인하며, 정확도 65% 이상이면 매칭 성공입니다.
                     </p>
                   </div>
+                  <div className="rounded-2xl bg-gray-50 p-4">
+                    <h3 className="font-bold text-hope-text">발음 두더지 잡기</h3>
+                    <p className="mt-1">
+                      단어를 또렷하게 발음해 정확도를 통과하면 두더지 잡기가 시작됩니다. 정답
+                      발음 말풍선(초록)만 망치로 잡고, 틀린 발음(빨강)은 피하세요. 잡은 두더지
+                      수만큼 코인을 받을 수 있어요.
+                    </p>
+                  </div>
                 </div>
               </GuideSection>
 

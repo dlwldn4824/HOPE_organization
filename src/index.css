@@ -9,7 +9,23 @@
   --color-hope-text: #1f2937;
   --color-hope-sub: #6b7280;
   --color-hope-border: #e5e7eb;
+  --color-parent-green: #7ccf63;
+  --color-parent-green-soft: #e8f8e3;
+  --color-parent-blue: #5db8ff;
+  --color-parent-blue-soft: #e8f4ff;
+  --color-parent-bg: #f8fafb;
+  --color-parent-muted: #94a3b8;
   --font-sans: 'Pretendard', system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+@font-face {
+  font-family: 'Gumi Romance';
+  src:
+    url('/fonts/GumiRomance.otf') format('opentype'),
+    url('/fonts/GumiRomance.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
 }
 
 * {
@@ -47,13 +63,30 @@ body {
   }
 }
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-  to {
-    opacity: 1;
+@keyframes whackBounce {
+  0%,
+  100% {
     transform: translateY(0);
   }
+  50% {
+    transform: translateY(-4%);
+  }
+}
+
+@keyframes whackBubble {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.04);
+  }
+}
+
+.animate-whack-bounce {
+  animation: whackBounce 0.8s ease-in-out infinite;
+}
+
+.animate-whack-bubble {
+  animation: whackBubble 1s ease-in-out infinite;
 }
