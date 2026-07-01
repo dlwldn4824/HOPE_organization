@@ -9,16 +9,16 @@
 # 서버 구조:
 #   ~/hope/       ← main 브랜치 (백엔드 + compose 설정)     rsync
 #   ~/hope-ai/    ← Hope-AI 브랜치 (AI Python 소스)         git pull
-#   /var/lib/hope-checkpoints/  ← 체크포인트 (별도 scp)
+#   ~/hope-checkpoints/  ← 체크포인트 (별도 scp)
 #
 # Prereq (한 번만 세팅):
 #   - ~/.ssh/config 에 Harvester 호스트 (Game 프로젝트 세팅과 동일)
 #   - Harvester ~/hope/deploy/.env (deploy/.env.example 참고)
 #   - Cloudflare 터널 55cbfbbf-... 에 hope.harvester.kr → localhost:8093 ingress
 #   - hope-ai 사용 시:
-#     * ssh Harvester "sudo mkdir -p /var/lib/hope-checkpoints && sudo chown harvester:harvester /var/lib/hope-checkpoints"
+#     * ssh Harvester "sudo mkdir -p ~/hope-checkpoints && sudo chown harvester:harvester ~/hope-checkpoints"
 #     * ssh Harvester "git clone -b Hope-AI https://github.com/dlwldn4824/HOPE_organization.git ~/hope-ai"
-#     * scp /path/to/checkpoints/stage1b-mix Harvester:/var/lib/hope-checkpoints/
+#     * scp /path/to/checkpoints/stage1b-mix Harvester:~/hope-checkpoints/
 
 set -euo pipefail
 
@@ -75,13 +75,13 @@ if [ "$DEPLOY_AI" = "1" ]; then
 
   echo "🎯  [3/4] 체크포인트 존재 확인"
   ssh "${REMOTE_HOST}" "
-    if [ -f /var/lib/hope-checkpoints/stage1b-mix/final/model.safetensors ]; then
-      echo '  ✅ 체크포인트 있음 (' \$(du -h /var/lib/hope-checkpoints/stage1b-mix/final/model.safetensors | cut -f1) ')'
+    if [ -f ~/hope-checkpoints/stage1b-mix/final/model.safetensors ]; then
+      echo '  ✅ 체크포인트 있음 (' \$(du -h ~/hope-checkpoints/stage1b-mix/final/model.safetensors | cut -f1) ')'
     else
-      echo '  ⚠️  /var/lib/hope-checkpoints/stage1b-mix/final/model.safetensors 없음'
+      echo '  ⚠️  ~/hope-checkpoints/stage1b-mix/final/model.safetensors 없음'
       echo '     → hope-ai 는 PhonemeRecognizerStub 폴백으로 뜬다.'
       echo '     scp 로 미리 올려두려면:'
-      echo '       scp -r /path/to/checkpoints/stage1b-mix ${REMOTE_HOST}:/var/lib/hope-checkpoints/'
+      echo '       scp -r /path/to/checkpoints/stage1b-mix ${REMOTE_HOST}:~/hope-checkpoints/'
     fi
   "
 else
