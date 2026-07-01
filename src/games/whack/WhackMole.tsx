@@ -32,12 +32,12 @@ export function WhackMole({ x, y, src, label, phase }: WhackMoleProps) {
         opacity,
         transition:
           phase === 'rising'
-            ? 'transform 0.35s cubic-bezier(0.34, 1.4, 0.64, 1), opacity 0.25s'
+            ? 'transform 0.7s cubic-bezier(0.34, 1.4, 0.64, 1), opacity 0.5s'
             : isCaught
-              ? 'transform 0.2s cubic-bezier(0.34, 1.4, 0.64, 1), opacity 0.2s'
+              ? 'transform 0.4s cubic-bezier(0.34, 1.4, 0.64, 1), opacity 0.4s'
               : phase === 'hiding'
-                ? 'transform 0.3s ease-in, opacity 0.3s'
-                : 'transform 0.2s ease-out',
+                ? 'transform 0.6s ease-in, opacity 0.6s'
+                : 'transform 0.4s ease-out',
         transformOrigin: 'bottom center',
       }}
     >

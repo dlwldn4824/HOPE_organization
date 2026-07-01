@@ -84,11 +84,11 @@ body {
 }
 
 .animate-whack-bounce {
-  animation: whackBounce 0.8s ease-in-out infinite;
+  animation: whackBounce 1.6s ease-in-out infinite;
 }
 
 .animate-whack-bubble {
-  animation: whackBubble 1s ease-in-out infinite;
+  animation: whackBubble 2s ease-in-out infinite;
 }
 
 @keyframes whackCaught {

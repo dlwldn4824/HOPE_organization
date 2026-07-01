@@ -1,10 +1,10 @@
 export const WHACK_GAME_DURATION_SECONDS = 60;
 export const WHACK_MOLE_GOAL = 5;
 export const WHACK_MAX_ACTIVE_MOLES = 5;
-export const WHACK_MOLE_VISIBLE_MS = 3200;
-export const WHACK_MOLE_HIDE_MS = 350;
-export const WHACK_MOLE_CAUGHT_MS = 750;
-export const WHACK_SPAWN_INTERVAL_MS = 1100;
+export const WHACK_MOLE_VISIBLE_MS = 6400;
+export const WHACK_MOLE_HIDE_MS = 700;
+export const WHACK_MOLE_CAUGHT_MS = 1500;
+export const WHACK_SPAWN_INTERVAL_MS = 2200;
 export const WHACK_VOICE_PASS_THRESHOLD = 58;
 export const WHACK_LISTEN_COOLDOWN_MS = 350;
 export const WHACK_RECORD_MS = 2200;
