@@ -1,6 +1,6 @@
-# HOPE 백엔드 배포 가이드
+# HOPE 백엔드 + AI 배포 가이드
 
-> `hope.harvester.kr` 로 HOPE 백엔드를 배포. 이미 뜬 [Harvester 서버 · Cloudflare Tunnel 인프라](../../Game/docs/DEPLOY.md)를 재사용한다.
+> `hope.harvester.kr` 로 HOPE 백엔드를, 같은 Harvester 서버에 AI 추론 컨테이너(내부)를 배포. 이미 뜬 [Harvester 서버 · Cloudflare Tunnel 인프라](../../Game/docs/DEPLOY.md)를 재사용한다.
 
 ---
 
@@ -8,14 +8,19 @@
 
 ```
 [맥: 개발/배포 명령]
-     │ rsync 코드 전송 → ssh Harvester → docker compose up -d --build
+     │ rsync main + git pull Hope-AI + ssh Harvester → docker compose up
      ▼
-[Harvester 10.3.10.168 · Ubuntu · Docker]
+[Harvester 10.3.10.168 · Ubuntu · Docker · GPU 없음]
      │
      ├─ hope-backend 컨테이너  (호스트 8093 → 컨테이너 4000)
      │   ├─ Node.js 20 (slim)
      │   ├─ SQLite 파일: Docker volume `hopedata` (재빌드해도 유지)
      │   └─ /health · /docs · /api/*
+     │           ↓  Docker network 내부 호출
+     ├─ hope-ai 컨테이너 (외부 노출 X, docker network 만)
+     │   ├─ Python 3.11 + PyTorch CPU + Wav2Vec2
+     │   ├─ 체크포인트 마운트: /var/lib/hope-checkpoints → /checkpoints (읽기전용)
+     │   └─ FastAPI :8000
      │
      └─ cloudflared 컨테이너  (dduckyee 스택 공용, host network)
          └─ ingress: hope.harvester.kr → localhost:8093
@@ -26,6 +31,15 @@
 - 인바운드 포트 개방 불필요. cloudflared 가 아웃바운드 터널만 맺음.
 - SQLite 파일은 `hopedata` 볼륨에 저장 → 재배포·재부팅해도 데이터 유지.
 - 컨테이너 안에서 non-root(uid 1001) 로 실행.
+- **hope-ai 는 외부에 노출되지 않음** — hope-backend 만 docker network 로 붙는다.
+- 체크포인트는 이미지 안에 안 넣고 **host bind mount** 로 주입 → 이미지 슬림, 체크포인트 교체 쉬움.
+
+### AI 라우팅 옵션
+
+| `SPEECH_COACH_API_BASE` 값 (deploy/.env) | 어디로 붙나 | 성능 |
+|---|---|---|
+| `http://hope-ai:8000` (기본) | Harvester 내 hope-ai | 3-8s (CPU) |
+| `https://go-neung.activejang.com` | 이주석님 GPU 서버 | ~400ms |
 
 ---
 
@@ -66,8 +80,11 @@ HOPE_TOKEN_TTL_HOURS=24
 LOG_LEVEL=info
 CORS_ORIGIN=*
 
-SPEECH_COACH_API_BASE=https://go-neung.activejang.com
-SPEECH_TIMEOUT_MS=15000
+# 기본은 http://hope-ai:8000 (같은 스택 안 내부 컨테이너).
+# go-neung 을 계속 쓰려면 아래 주석 해제.
+# SPEECH_COACH_API_BASE=https://go-neung.activejang.com
+
+SPEECH_TIMEOUT_MS=30000
 SPEECH_RETRIES=1
 SPEECH_MAX_BODY_BYTES=10485760
 EOF
@@ -77,14 +94,29 @@ chmod 600 ~/hope/deploy/.env
 
 `deploy/.env.example` 을 복사한 뒤 값만 채워도 됨. rsync 는 `deploy/.env` 를 제외하므로 실수로 덮어써지지 않는다.
 
+### 2.3 hope-ai 사용 시 (Harvester 로컬 AI)
+
+```bash
+# 체크포인트 저장 디렉토리 생성
+ssh Harvester "sudo mkdir -p /var/lib/hope-checkpoints && sudo chown harvester:harvester /var/lib/hope-checkpoints"
+
+# 로컬 체크포인트 서버로 전송 (약 1.2GB, 5분 소요 예상)
+scp -r /path/to/checkpoints/stage1b-mix Harvester:/var/lib/hope-checkpoints/
+
+# Hope-AI 브랜치 소스는 deploy/harvester.sh 가 자동 clone/pull.
+```
+
+체크포인트 없이 배포하면 hope-ai 는 `PhonemeRecognizerStub` 폴백으로 뜬다 (개발용 에코 모드).
+
 ---
 
 ## 3. 배포
 
 ```bash
 # 프로젝트 루트에서
-./deploy/harvester.sh              # 기본 = hope-backend 하나
-./deploy/harvester.sh hope-backend # 명시적으로 (동일)
+./deploy/harvester.sh                       # 모든 서비스 (hope-backend + hope-ai)
+./deploy/harvester.sh hope-backend          # 백엔드만
+./deploy/harvester.sh hope-backend hope-ai  # 명시적으로 둘 다
 ```
 
 내부 동작:
