@@ -20,13 +20,21 @@ app = FastAPI(
 _pipeline: InferencePipeline | None = None
 
 
+def _resolve_checkpoint_dir() -> Path:
+    return Path(os.environ.get("HOPE_CKPT_DIR", "/root/hope/checkpoints/stage1b-mix/final"))
+
+
+def _checkpoint_exists(ckpt_path: Path) -> bool:
+    return (ckpt_path / "model.safetensors").exists() or (
+        ckpt_path / "pytorch_model.bin"
+    ).exists()
+
+
 def get_pipeline() -> InferencePipeline:
     global _pipeline
     if _pipeline is None:
-        ckpt = os.environ.get("HOPE_CKPT_DIR", "/root/hope/checkpoints/stage1b-mix/final")
-        ckpt_path = Path(ckpt)
-        weights = ckpt_path / "model.safetensors"
-        if weights.exists() or (ckpt_path / "pytorch_model.bin").exists():
+        ckpt_path = _resolve_checkpoint_dir()
+        if _checkpoint_exists(ckpt_path):
             _pipeline = InferencePipeline.from_checkpoint(ckpt_path)
         else:
             _pipeline = InferencePipeline.from_stub()
@@ -40,8 +48,18 @@ def root() -> RedirectResponse:
 
 
 @app.get("/health")
-def health() -> dict[str, str]:
-    return {"status": "ok", "version": __version__}
+def health() -> dict[str, object]:
+    """라이브니스 + 모델 적재 상태. 운영/온콜이 한 번 호출로 확인."""
+    ckpt_path = _resolve_checkpoint_dir()
+    model_loaded = _checkpoint_exists(ckpt_path)
+    mode = "real" if (_pipeline is not None and model_loaded) else "stub"
+    return {
+        "status": "ok",
+        "version": __version__,
+        "model_loaded": model_loaded,
+        "checkpoint_dir": str(ckpt_path),
+        "mode": mode,
+    }
 
 
 @app.post("/v1/utterance/analyze")
