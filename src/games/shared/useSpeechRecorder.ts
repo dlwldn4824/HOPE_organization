@@ -139,7 +139,6 @@ export function useSpeechRecorder(options: UseSpeechRecorderOptions = {}) {
         setIsAnalyzing(false);
       }
     },
-    [maxDurationMs, stopRecording, user],
     [analyzeAudio, recordAudio],
   );
 
