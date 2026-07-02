@@ -299,7 +299,13 @@ const server = http.createServer(async (req, res) => {
     const status = error instanceof HttpError ? error.status : 500;
     const message = error instanceof Error ? error.message : 'Internal server error';
     if (!res.headersSent) {
-      sendJson(res, status, { ok: false, error: message, details: error?.details, requestId });
+      sendJson(res, status, {
+        ok: false,
+        message,
+        error: message,
+        details: error?.details,
+        requestId,
+      });
     }
   } finally {
     const status = res.statusCode || 500;

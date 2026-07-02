@@ -41,7 +41,7 @@ export function RewardPage() {
             />
 
             <section className="grid grid-cols-1 gap-6 lg:grid-cols-[1.45fr_1fr]">
-              <RewardShop isLoggedIn={isLoggedIn} items={shopItems} />
+              <RewardShop isLoggedIn={isLoggedIn} items={shopItems} balance={balance} />
 
               <div className="flex min-w-0 flex-col gap-6">
                 <AttendanceRewardCard isLoggedIn={isLoggedIn} days={attendance} />

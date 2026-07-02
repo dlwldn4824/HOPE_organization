@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import type { ParentSettings } from '../types/setting';
 import { NotificationSwitch } from './NotificationSwitch';
 import { SettingCard } from './SettingCard';
@@ -19,12 +20,22 @@ export function ParentSettingCard({
   onWeeklyReportChange,
   onPasswordChange,
 }: ParentSettingCardProps) {
+  const navigate = useNavigate();
+
   return (
     <SettingCard title="보호자 설정" id="parent">
       {!isLoggedIn ? (
         <p className="mt-4 text-sm text-hope-sub">로그인 후 설정을 이용할 수 있어요.</p>
       ) : (
         <div className="mt-4 space-y-5">
+          <button
+            type="button"
+            onClick={() => navigate('/parent')}
+            className="w-full rounded-2xl bg-gradient-to-r from-[#7ccf63] to-[#5db8ff] px-4 py-4 text-sm font-bold text-white shadow-md transition-opacity hover:opacity-95"
+          >
+            부모 리포트 대시보드 열기
+          </button>
+
           <div>
             <label htmlFor="parent-email" className="mb-2 block text-sm font-semibold text-hope-text">
               보호자 이메일

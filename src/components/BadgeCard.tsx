@@ -2,6 +2,11 @@ import { Award } from 'lucide-react';
 import type { Badge } from '../types/home';
 import { PlaceholderBox } from './PlaceholderBox';
 
+const BADGE_ICONS: Record<string, string> = {
+  '첫 분석 완료': '/assets/badges/first-analysis-complete.png',
+  '세 번 연습': '/assets/badges/three-practice.png',
+};
+
 interface BadgeCardProps {
   isLoggedIn: boolean;
   badges: Badge[];
@@ -25,16 +30,29 @@ export function BadgeCard({ isLoggedIn, badges }: BadgeCardProps) {
         </div>
       ) : (
         <div className="grid min-w-0 grid-cols-4 gap-3">
-          {badges.slice(0, 4).map((badge) => (
+          {badges.slice(0, 4).map((badge) => {
+            const iconSrc = badge.icon ?? BADGE_ICONS[badge.name];
+
+            return (
             <div key={badge.name} className="flex min-w-0 flex-col items-center overflow-hidden text-center">
-              <PlaceholderBox
-                label="BADGE ICON"
-                className="h-16 w-16 shrink-0 rounded-2xl text-[8px] [clip-path:polygon(50%_0%,100%_25%,100%_75%,50%_100%,0%_75%,0%_25%)]"
-              />
+              {iconSrc ? (
+                <img
+                  src={iconSrc}
+                  alt={badge.name}
+                  className="h-20 w-20 shrink-0 bg-transparent object-contain"
+                  draggable={false}
+                />
+              ) : (
+                <PlaceholderBox
+                  label="BADGE ICON"
+                  className="h-16 w-16 shrink-0 rounded-2xl text-[8px] [clip-path:polygon(50%_0%,100%_25%,100%_75%,50%_100%,0%_75%,0%_25%)]"
+                />
+              )}
               <p className="mt-2 w-full truncate text-sm font-bold text-hope-text">{badge.name}</p>
               <p className="mt-0.5 w-full truncate text-[11px] text-hope-sub">{badge.date}</p>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </article>

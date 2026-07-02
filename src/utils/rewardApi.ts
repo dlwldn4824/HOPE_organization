@@ -3,6 +3,15 @@ import { authFetch } from './authFetch';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '';
 
+async function readApiErrorMessage(response: Response, fallback: string): Promise<string> {
+  try {
+    const payload = (await response.json()) as { message?: string; error?: string };
+    return payload.message ?? payload.error ?? fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 export interface ChargePackage {
   id: string;
   amount: number;
@@ -13,22 +22,20 @@ export async function claimRewardMission(missionId: string) {
   const response = await authFetch(`${API_BASE_URL}/api/rewards/missions/${missionId}/claim`, {
     method: 'POST',
   });
-  const payload = (await response.json()) as { message?: string };
   if (!response.ok) {
-    throw new Error(payload.message ?? '보상을 받지 못했습니다.');
+    throw new Error(await readApiErrorMessage(response, '보상을 받지 못했습니다.'));
   }
-  return payload;
+  return (await response.json()) as { message?: string };
 }
 
 export async function purchaseShopItem(itemId: string) {
   const response = await authFetch(`${API_BASE_URL}/api/rewards/shop/${itemId}/purchase`, {
     method: 'POST',
   });
-  const payload = (await response.json()) as { message?: string; error?: string };
   if (!response.ok) {
-    throw new Error(payload.message ?? payload.error ?? '아이템을 구매하지 못했습니다.');
+    throw new Error(await readApiErrorMessage(response, '아이템을 구매하지 못했습니다.'));
   }
-  return payload;
+  return (await response.json()) as { message?: string };
 }
 
 export async function chargeWallet(currency: RewardCurrency, packageId: string) {

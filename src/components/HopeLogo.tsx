@@ -5,8 +5,8 @@ interface HopeLogoProps {
   alt?: string;
 }
 
-/** HOPE 로고 — src/assets/hope-logo.png (Vite import) */
-export function HopeLogo({ className = 'h-10 w-auto', alt = 'HOPE 로고' }: HopeLogoProps) {
+/** 앱 로고 — src/assets/hope-logo.png (Vite import) */
+export function HopeLogo({ className = 'h-10 w-auto', alt = '또박또박' }: HopeLogoProps) {
   return (
     <img
       src={hopeLogo}

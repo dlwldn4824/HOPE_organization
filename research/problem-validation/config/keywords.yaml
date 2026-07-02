@@ -1,0 +1,33 @@
+research_question: "조음음운장애 아동의 언어재활에서 가장 큰 사회적 문제는 무엇인가?"
+
+news:
+  period: [2020, 2026]
+  queries:
+    - 조음음운장애
+    - 언어치료
+    - 언어재활
+    - 발달재활
+    - 말소리장애
+    - 언어발달
+    - 발달지연
+
+papers:
+  queries:
+    - 조음음운장애
+    - 언어재활
+    - 언어치료
+    - 보호자
+    - 발달재활
+    - 가정연습
+    - 일반화
+
+lda:
+  num_topics: 4
+  passes: 15
+
+tfidf:
+  top_n: 30
+
+network:
+  min_cooccurrence: 2
+  max_nodes: 40

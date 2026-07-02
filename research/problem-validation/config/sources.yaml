@@ -1,0 +1,28 @@
+news_sources:
+  - id: google_news_rss
+    enabled: true
+    note: "API 키 없이 RSS로 수집 가능"
+  - id: naver_news
+    enabled: false
+    note: "NAVER_CLIENT_ID/SECRET 필요 (.env)"
+  - id: bigkinds
+    enabled: false
+    note: "BIGKINDS_API_KEY 필요 (.env)"
+
+public_data_sources:
+  - name: 보건복지부 발달재활서비스
+    url: https://www.data.go.kr
+  - name: 건강보험심사평가원 언어재활
+    url: https://www.hira.or.kr
+  - name: KOSIS 장애아동 통계
+    url: https://kosis.kr
+  - name: 장애인개발원 발달재활 통계
+    url: https://www.koddi.or.kr
+
+paper_sources:
+  - name: KCI
+    export: "수동 CSV export (title, abstract, keywords)"
+  - name: RISS
+    export: "수동 CSV export"
+  - name: DBpia
+    export: "수동 CSV export"
