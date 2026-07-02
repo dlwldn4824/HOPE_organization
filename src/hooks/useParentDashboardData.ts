@@ -24,9 +24,8 @@ export function useParentDashboardData() {
   const record = useRecordData();
 
   return useMemo(() => {
-    const accuracyPoints = record.accuracyData.length
-      ? record.accuracyData
-      : FALLBACK_TREND_30D.slice(-7);
+    const trendSeries = record.accuracyData.length ? record.accuracyData : FALLBACK_TREND_30D;
+    const accuracyPoints = trendSeries.slice(-7);
 
     const latestAccuracy =
       accuracyPoints.length > 0
@@ -70,7 +69,7 @@ export function useParentDashboardData() {
         trend: accuracyPoints,
       },
       pronunciationScore: latestAccuracy,
-      trend30d: record.accuracyData.length ? record.accuracyData : FALLBACK_TREND_30D,
+      trend30d: trendSeries,
       radar,
       aiFeedback,
       sessions: FALLBACK_SESSIONS,
