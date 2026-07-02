@@ -1,6 +1,6 @@
-# HOPE 백엔드 + AI 배포 가이드
+# HOPE 프론트 + 백엔드 + AI 배포 가이드
 
-> `hope.harvester.kr` 로 HOPE 백엔드를, 같은 Harvester 서버에 AI 추론 컨테이너(내부)를 배포. 이미 뜬 [Harvester 서버 · Cloudflare Tunnel 인프라](../../Game/docs/DEPLOY.md)를 재사용한다.
+> `hope.harvester.kr` 로 HOPE 서비스(프론트 + 백엔드 API + AI 추론) 전부를 하나의 도메인으로 배포. 이미 뜬 [Harvester 서버 · Cloudflare Tunnel 인프라](../../Game/docs/DEPLOY.md)를 재사용한다.
 
 ---
 
@@ -12,7 +12,13 @@
      ▼
 [Harvester 10.3.10.168 · Ubuntu · Docker · GPU 없음]
      │
-     ├─ hope-backend 컨테이너  (호스트 8093 → 컨테이너 4000)
+     ├─ hope-web 컨테이너 (호스트 8094 → 컨테이너 :80, nginx)
+     │   ├─ Vite 빌드된 정적 프론트 (React)
+     │   ├─ /              → SPA fallback (index.html)
+     │   ├─ /assets/*      → 정적 (immutable 1y 캐시)
+     │   └─ /api,/health,/docs,/openapi.json → hope-backend 프록시
+     │           ↓  docker network
+     ├─ hope-backend 컨테이너 (외부 노출 X, expose 4000)
      │   ├─ Node.js 20 (slim)
      │   ├─ SQLite 파일: Docker volume `hopedata` (재빌드해도 유지)
      │   └─ /health · /docs · /api/*
@@ -22,16 +28,18 @@
      │   ├─ 체크포인트 마운트: ~/hope-checkpoints → /checkpoints (읽기전용)
      │   └─ FastAPI :8000
      │
-     └─ cloudflared 컨테이너  (dduckyee 스택 공용, host network)
-         └─ ingress: hope.harvester.kr → localhost:8093
+     └─ cloudflared 컨테이너 (dduckyee 스택 공용, host network)
+         └─ ingress: hope.harvester.kr → localhost:8094
      ▼
 [Cloudflare 엣지] ──▶ https://hope.harvester.kr
 ```
 
+- **한 도메인**으로 프론트/백엔드 다 서빙 → CORS 불필요, 프론트 `.env` 필요 없음
+- 프론트는 상대 경로로 `/api` 호출 → 같은 오리진에서 nginx 가 백엔드로 프록시
 - 인바운드 포트 개방 불필요. cloudflared 가 아웃바운드 터널만 맺음.
 - SQLite 파일은 `hopedata` 볼륨에 저장 → 재배포·재부팅해도 데이터 유지.
 - 컨테이너 안에서 non-root(uid 1001) 로 실행.
-- **hope-ai 는 외부에 노출되지 않음** — hope-backend 만 docker network 로 붙는다.
+- **hope-backend / hope-ai 외부 노출 X** — hope-web 만 docker network 로 부른다.
 - 체크포인트는 이미지 안에 안 넣고 **host bind mount** 로 주입 → 이미지 슬림, 체크포인트 교체 쉬움.
 
 ### AI 라우팅 옵션
