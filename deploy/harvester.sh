@@ -30,7 +30,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 SERVICES=("$@")
-DEFAULT_SERVICES=(hope-backend hope-ai)
+DEFAULT_SERVICES=(hope-web hope-backend hope-ai)
 if [ ${#SERVICES[@]} -eq 0 ]; then
   SERVICES=("${DEFAULT_SERVICES[@]}")
 fi
@@ -104,6 +104,8 @@ ssh "${REMOTE_HOST}" "cd ${REMOTE_DIR} && \
 echo ""
 echo "✅  Deploy submitted. Verify:"
 echo "    curl -s https://hope.harvester.kr/health | jq .upstream"
+echo "    curl -sI https://hope.harvester.kr/ | head -3   # 프론트 (200)"
+echo "    ssh ${REMOTE_HOST} 'docker logs hope-web --tail 10'"
 echo "    ssh ${REMOTE_HOST} 'docker logs hope-backend --tail 20'"
 if [ "$DEPLOY_AI" = "1" ]; then
   echo "    ssh ${REMOTE_HOST} 'docker logs hope-ai --tail 30'   # 모델 로드 대기"

@@ -1,0 +1,16 @@
+node_modules
+dist
+dist-ssr
+backend
+speech-coach
+research
+docs
+data
+.git
+.venv
+*.db
+*.db-*
+.env
+.env.local
+deploy/.env
+.DS_Store
