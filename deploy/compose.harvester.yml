@@ -1,7 +1,7 @@
 # HOPE 프론트 + 백엔드 + AI 배포 (Harvester 서버 · Docker Compose · Cloudflare Tunnel)
 # 자세한 절차: docs/DEPLOY.md
 #
-# 외부 라우팅:  hope.harvester.kr ─cf tunnel─▶ Harvester localhost:8094 ─▶ hope-web :80
+# 외부 라우팅:  ddobakddobak.harvester.kr ─cf tunnel─▶ Harvester localhost:8094 ─▶ hope-web :80
 #                                                                          ├─ /              → 프론트 정적
 #                                                                          └─ /api,/health,/docs → hope-backend :4000
 # 내부 호출:    hope-backend ──docker network──▶ hope-ai :8000
@@ -16,7 +16,7 @@ services:
       dockerfile: deploy/hope-web/Dockerfile
     container_name: hope-web
     ports:
-      # 호스트 8094 (cloudflared 가 hope.harvester.kr → localhost:8094 로 프록시)
+      # 호스트 8094 (cloudflared 가 ddobakddobak.harvester.kr → localhost:8094 로 프록시)
       - "8094:80"
     restart: unless-stopped
     depends_on:
