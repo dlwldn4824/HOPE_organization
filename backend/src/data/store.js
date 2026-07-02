@@ -1,37 +1,99 @@
 import crypto from 'node:crypto';
+import bcrypt from 'bcryptjs';
+import { db } from '../db/index.js';
+
+const TOKEN_TTL_HOURS = Number(process.env.HOPE_TOKEN_TTL_HOURS || 24);
 
 const now = () => new Date().toISOString();
+const tokenExpiry = () => new Date(Date.now() + TOKEN_TTL_HOURS * 3600 * 1000).toISOString();
 
-const users = new Map();
-const sessions = new Map();
+// --- statements (prepared once) ---
+const stmts = {
+  userByUid: db.prepare('SELECT * FROM users WHERE uid = ?'),
+  userByEmail: db.prepare('SELECT * FROM users WHERE email = ?'),
+  userByUsername: db.prepare('SELECT * FROM users WHERE LOWER(username) = LOWER(?)'),
+  userByIdentifier: db.prepare(
+    'SELECT * FROM users WHERE email = ? OR LOWER(username) = LOWER(?)',
+  ),
+  insertUser: db.prepare(`
+    INSERT INTO users (uid, username, email, password_hash, nickname, gender)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `),
+  updateUserStats: db.prepare(`
+    UPDATE users SET level = ?, exp = ?, max_exp = ?, star = ?, updated_at = ? WHERE uid = ?
+  `),
+  updateUserProfile: db.prepare(`
+    UPDATE users SET nickname = ?, gender = ?, updated_at = ? WHERE uid = ?
+  `),
 
-const defaultUser = {
-  uid: 'user-001',
-  username: 'demo',
-  email: 'demo@hope.local',
-  password: 'hope1234',
-  nickname: '지우',
-  level: 1,
-  exp: 0,
-  maxExp: 100,
-  star: 0,
-  gender: 'female',
-  createdAt: now(),
+  insertSession: db.prepare(
+    'INSERT INTO sessions (token, uid, expires_at) VALUES (?, ?, ?)',
+  ),
+  sessionByToken: db.prepare('SELECT * FROM sessions WHERE token = ?'),
+  deleteExpiredSessions: db.prepare("DELETE FROM sessions WHERE expires_at < datetime('now')"),
+
+  insertResult: db.prepare(`
+    INSERT INTO learning_results
+      (id, uid, game_id, target_word, accuracy, earned_stars, duration_seconds, analysis_json, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `),
+  resultsByUser: db.prepare(
+    'SELECT * FROM learning_results WHERE uid = ? ORDER BY created_at ASC',
+  ),
+
+  walletByUser: db.prepare('SELECT * FROM wallets WHERE uid = ?'),
+  insertWallet: db.prepare('INSERT INTO wallets (uid) VALUES (?)'),
+  addWalletDelta: db.prepare(`
+    UPDATE wallets
+    SET spent_coins = spent_coins + ?,
+        spent_gems  = spent_gems  + ?,
+        bonus_coins = bonus_coins + ?,
+        bonus_gems  = bonus_gems  + ?
+    WHERE uid = ?
+  `),
+
+  settingsByUser: db.prepare('SELECT payload_json FROM settings WHERE uid = ?'),
+  upsertSettings: db.prepare(`
+    INSERT INTO settings (uid, payload_json) VALUES (?, ?)
+    ON CONFLICT(uid) DO UPDATE SET payload_json = excluded.payload_json
+  `),
+
+  purchasedByUser: db.prepare('SELECT item_id FROM shop_purchases WHERE uid = ?'),
+  insertPurchase: db.prepare(
+    'INSERT OR IGNORE INTO shop_purchases (uid, item_id) VALUES (?, ?)',
+  ),
+
+  claimedMissionsByUser: db.prepare('SELECT mission_id FROM claimed_missions WHERE uid = ?'),
+  insertClaimedMission: db.prepare(
+    'INSERT OR IGNORE INTO claimed_missions (uid, mission_id) VALUES (?, ?)',
+  ),
+
+  readNotifsByUser: db.prepare('SELECT notification_id FROM read_notifications WHERE uid = ?'),
+  insertReadNotif: db.prepare(
+    'INSERT OR IGNORE INTO read_notifications (uid, notification_id) VALUES (?, ?)',
+  ),
+
+  eventClaimsByUser: db.prepare('SELECT event_id FROM event_claims WHERE uid = ?'),
+  insertEventClaim: db.prepare(
+    'INSERT OR IGNORE INTO event_claims (uid, event_id) VALUES (?, ?)',
+  ),
+
+  attendanceByUser: db.prepare('SELECT day FROM attendance_claims WHERE uid = ?'),
+  insertAttendance: db.prepare(
+    'INSERT OR IGNORE INTO attendance_claims (uid, day) VALUES (?, ?)',
+  ),
+
+  chargeLog: db.prepare('SELECT count FROM charge_log WHERE uid = ? AND log_date = ?'),
+  upsertChargeLog: db.prepare(`
+    INSERT INTO charge_log (uid, log_date, count) VALUES (?, ?, ?)
+    ON CONFLICT(uid, log_date) DO UPDATE SET count = excluded.count
+  `),
 };
 
-users.set(defaultUser.uid, defaultUser);
+// Cleanup expired sessions on boot.
+stmts.deleteExpiredSessions.run();
 
-const state = {
-  learningResults: [],
-  claimedMissionIdsByUserId: new Map(),
-  settingsByUserId: new Map(),
-  readNotificationIdsByUserId: new Map(),
-  walletByUserId: new Map(),
-  eventClaimsByUserId: new Map(),
-  claimedAttendanceDaysByUserId: new Map(),
-  chargeLogByUserId: new Map(),
-};
-
+// --- catalogs (in-memory config) ---
 const EVENT_CATALOG = [
   {
     id: 'spring-2026',
@@ -71,6 +133,26 @@ const CHARGE_PACKAGES = {
   ],
 };
 
+const missionRewardCoins = { 'daily-study': 50, 'accuracy-80': 100, 'play-games': 80 };
+const missionRewardGems = { 'streak-7': 3 };
+
+// --- row → user mapping ---
+function rowToUser(row) {
+  if (!row) return null;
+  return {
+    uid: row.uid,
+    username: row.username,
+    email: row.email,
+    nickname: row.nickname,
+    level: row.level,
+    exp: row.exp,
+    maxExp: row.max_exp,
+    star: row.star,
+    gender: row.gender,
+    createdAt: row.created_at,
+  };
+}
+
 function publicUser(user) {
   return {
     uid: user.uid,
@@ -90,14 +172,11 @@ function userInfo(user) {
   };
 }
 
+// --- auth ---
 function createToken(uid) {
   const token = crypto.randomBytes(24).toString('hex');
-  sessions.set(token, { uid, createdAt: now() });
+  stmts.insertSession.run(token, uid, tokenExpiry());
   return token;
-}
-
-export function getDefaultUser() {
-  return users.get(defaultUser.uid);
 }
 
 export function signup(payload) {
@@ -105,68 +184,60 @@ export function signup(payload) {
   const username = String(payload.username ?? '').trim();
   const password = String(payload.password ?? '');
   const nickname = String(payload.childNickname ?? payload.nickname ?? '').trim();
-  const gender = payload.childGender || payload.gender || undefined;
+  const gender = payload.childGender || payload.gender || null;
 
   if (!email || !username || !password || !nickname) {
     return { ok: false, status: 400, message: 'username, email, password, childNickname are required' };
   }
 
-  const exists = [...users.values()].some((user) => user.email === email || user.username === username);
+  const exists =
+    stmts.userByEmail.get(email) || stmts.userByUsername.get(username);
   if (exists) return { ok: false, status: 409, message: 'User already exists' };
 
   const uid = `user-${crypto.randomUUID()}`;
-  const user = {
-    uid,
-    username,
-    email,
-    password,
-    nickname,
-    level: 1,
-    exp: 0,
-    maxExp: 100,
-    star: 0,
-    gender,
-    createdAt: now(),
-  };
+  const passwordHash = bcrypt.hashSync(password, 10);
+  stmts.insertUser.run(uid, username, email, passwordHash, nickname, gender);
 
-  users.set(uid, user);
+  const user = rowToUser(stmts.userByUid.get(uid));
   return { ok: true, token: createToken(uid), user: publicUser(user) };
 }
 
 export function login(payload) {
   const identifier = String(payload.identifier ?? '').trim().toLowerCase();
   const password = String(payload.password ?? '');
-  const user = [...users.values()].find(
-    (candidate) =>
-      (candidate.email === identifier || candidate.username.toLowerCase() === identifier) &&
-      candidate.password === password,
-  );
-
-  if (!user) return { ok: false, status: 401, message: 'Invalid identifier or password' };
+  const row = stmts.userByIdentifier.get(identifier, identifier);
+  if (!row || !bcrypt.compareSync(password, row.password_hash)) {
+    return { ok: false, status: 401, message: 'Invalid identifier or password' };
+  }
+  const user = rowToUser(row);
   return { ok: true, token: createToken(user.uid), user: publicUser(user) };
 }
 
 export function getUserByToken(token) {
-  const session = sessions.get(token);
+  if (!token) return null;
+  const session = stmts.sessionByToken.get(token);
   if (!session) return null;
-  return users.get(session.uid) ?? null;
+  if (new Date(session.expires_at).getTime() < Date.now()) return null;
+  return rowToUser(stmts.userByUid.get(session.uid));
 }
 
 export function updateProfile(user, payload) {
   const nickname = payload.nickname === undefined ? user.nickname : String(payload.nickname).trim();
   const gender = payload.gender === undefined ? user.gender : payload.gender;
-
   if (!nickname) return { ok: false, status: 400, message: 'nickname cannot be empty' };
 
-  Object.assign(user, { nickname, gender, updatedAt: now() });
-  return { ok: true, user: publicUser(user) };
+  stmts.updateUserProfile.run(nickname, gender, now(), user.uid);
+  const updated = rowToUser(stmts.userByUid.get(user.uid));
+  return { ok: true, user: publicUser(updated) };
 }
 
+// --- learning results & level-up ---
 export function saveLearningResult(user, payload) {
   const accuracy = clampNumber(Number(payload.accuracy ?? 0), 0, 100);
   const earnedStars = clampNumber(Number(payload.earnedStars ?? starsForAccuracy(accuracy)), 1, 5);
+  const id = crypto.randomUUID();
   const result = {
-    id: crypto.randomUUID(),
+    id,
     userId: user.uid,
     gameId: String(payload.gameId ?? 'speech'),
     targetWord: String(payload.targetWord ?? ''),
@@ -177,19 +248,47 @@ export function saveLearningResult(user, payload) {
     createdAt: now(),
   };
 
-  state.learningResults.push(result);
-  user.exp += earnedStars * 8;
-  user.star += earnedStars * 10;
+  stmts.insertResult.run(
+    result.id,
+    user.uid,
+    result.gameId,
+    result.targetWord,
+    accuracy,
+    earnedStars,
+    result.durationSeconds,
+    JSON.stringify(result.analysis),
+    result.createdAt,
+  );
 
-  while (user.exp >= user.maxExp) {
-    user.exp -= user.maxExp;
-    user.level += 1;
-    user.maxExp += 50;
+  let { exp, level, maxExp, star } = user;
+  exp += earnedStars * 8;
+  star += earnedStars * 10;
+  while (exp >= maxExp) {
+    exp -= maxExp;
+    level += 1;
+    maxExp += 50;
   }
+  stmts.updateUserStats.run(level, exp, maxExp, star, now(), user.uid);
+  Object.assign(user, { exp, level, maxExp, star });
 
   return result;
 }
 
+function getResults(user) {
+  return stmts.resultsByUser.all(user.uid).map((row) => ({
+    id: row.id,
+    userId: row.uid,
+    gameId: row.game_id,
+    targetWord: row.target_word,
+    accuracy: row.accuracy,
+    earnedStars: row.earned_stars,
+    durationSeconds: row.duration_seconds,
+    analysis: row.analysis_json ? safeJsonParse(row.analysis_json) : null,
+    createdAt: row.created_at,
+  }));
+}
+
+// --- aggregated views ---
 export function getHomeData(user) {
   const results = getResults(user);
   const pccHistory = results.slice(-5).map((result, index) => ({
@@ -239,48 +338,67 @@ export function getLearningData(user) {
   };
 }
 
+const PITCH_POOL = [
+  { targetWord: '아', targetHz: 196, targetPhonemes: '["a"]', hint: '낮은 "아" 소리를 길게 내보세요' },
+  { targetWord: '우', targetHz: 220, targetPhonemes: '["u"]', hint: '조금 더 높은 "우" 소리를 내보세요' },
+  { targetWord: '이', targetHz: 262, targetPhonemes: '["i"]', hint: '밝은 "이" 소리를 내보세요' },
+  { targetWord: '오', targetHz: 294, targetPhonemes: '["o"]', hint: '둥근 "오" 소리를 내보세요' },
+  { targetWord: '에', targetHz: 330, targetPhonemes: '["e"]', hint: '가장 높은 "에" 소리를 내보세요' },
+  { targetWord: '으', targetHz: 175, targetPhonemes: '["ɯ"]', hint: '낮고 짧은 "으" 소리를 내보세요' },
+  { targetWord: '애', targetHz: 247, targetPhonemes: '["ɛ"]', hint: '입을 크게 벌려 "애" 소리를 내보세요' },
+  { targetWord: '야', targetHz: 350, targetPhonemes: '["j","a"]', hint: '높고 또렷한 "야" 소리를 내보세요' },
+];
+
+const MONSTER_POOL = [
+  { targetWord: '사과', targetPhonemes: '["s","a","g","w","a"]' },
+  { targetWord: '사자', targetPhonemes: '["s","a","j","a"]' },
+  { targetWord: '나무', targetPhonemes: '["n","a","m","u"]' },
+  { targetWord: '고양이', targetPhonemes: '["g","o","j","a","ng","i"]' },
+  { targetWord: '바나나', targetPhonemes: '["b","a","n","a","n","a"]' },
+  { targetWord: '라디오', targetPhonemes: '["r","a","d","i","o"]' },
+  { targetWord: '강아지', targetPhonemes: '["g","a","ng","a","j","i"]' },
+  { targetWord: '코끼리', targetPhonemes: '["k","o","kk","i","r","i"]' },
+  { targetWord: '토끼', targetPhonemes: '["t","o","kk","i"]' },
+  { targetWord: '거북이', targetPhonemes: '["g","ʌ","b","u","g","i"]' },
+];
+
+const MATCHING_POOL = [
+  { id: 'cat', word: '고양이', emoji: '🐱', targetPhonemes: '["g","o","j","a","ng","i"]' },
+  { id: 'banana', word: '바나나', emoji: '🍌', targetPhonemes: '["b","a","n","a","n","a"]' },
+  { id: 'apple', word: '사과', emoji: '🍎', targetPhonemes: '["s","a","g","w","a"]' },
+  { id: 'radio', word: '라디오', emoji: '📻', targetPhonemes: '["r","a","d","i","o"]' },
+  { id: 'tree', word: '나무', emoji: '🌳', targetPhonemes: '["n","a","m","u"]' },
+  { id: 'lion', word: '사자', emoji: '🦁', targetPhonemes: '["s","a","j","a"]' },
+  { id: 'dog', word: '강아지', emoji: '🐶', targetPhonemes: '["g","a","ng","a","j","i"]' },
+  { id: 'elephant', word: '코끼리', emoji: '🐘', targetPhonemes: '["k","o","kk","i","r","i"]' },
+  { id: 'rabbit', word: '토끼', emoji: '🐰', targetPhonemes: '["t","o","kk","i"]' },
+  { id: 'turtle', word: '거북이', emoji: '🐢', targetPhonemes: '["g","ʌ","b","u","g","i"]' },
+];
+
+function shuffle(items) {
+  const arr = items.slice();
+  for (let i = arr.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
 export function getGameSession(gameId) {
   if (gameId === 'pitch') {
-    return {
-      gameId: 'pitch',
-      rounds: [
-        { targetWord: '아', targetHz: 196, targetPhonemes: '["a"]', hint: '낮은 "아" 소리를 길게 내보세요' },
-        { targetWord: '우', targetHz: 220, targetPhonemes: '["u"]', hint: '조금 더 높은 "우" 소리를 내보세요' },
-        { targetWord: '이', targetHz: 262, targetPhonemes: '["i"]', hint: '밝은 "이" 소리를 내보세요' },
-        { targetWord: '오', targetHz: 294, targetPhonemes: '["o"]', hint: '둥근 "오" 소리를 내보세요' },
-        { targetWord: '에', targetHz: 330, targetPhonemes: '["e"]', hint: '가장 높은 "에" 소리를 내보세요' },
-      ],
-    };
+    return { gameId: 'pitch', rounds: shuffle(PITCH_POOL).slice(0, 5) };
   }
-
   if (gameId === 'monster') {
     return {
       gameId: 'monster',
       monsterMaxHp: 100,
       playerMaxHp: 100,
-      rounds: [
-        { targetWord: '사과', targetPhonemes: '["s","a","g","w","a"]' },
-        { targetWord: '사자', targetPhonemes: '["s","a","j","a"]' },
-        { targetWord: '나무', targetPhonemes: '["n","a","m","u"]' },
-        { targetWord: '고양이', targetPhonemes: '["g","o","j","a","ng","i"]' },
-      ],
+      rounds: shuffle(MONSTER_POOL).slice(0, 4),
     };
   }
-
   if (gameId === 'matching') {
-    return {
-      gameId: 'matching',
-      pairs: [
-        { id: 'cat', word: '고양이', emoji: '🐱', targetPhonemes: '["g","o","j","a","ng","i"]' },
-        { id: 'banana', word: '바나나', emoji: '🍌', targetPhonemes: '["b","a","n","a","n","a"]' },
-        { id: 'apple', word: '사과', emoji: '🍎', targetPhonemes: '["s","a","g","w","a"]' },
-        { id: 'radio', word: '라디오', emoji: '📻', targetPhonemes: '["r","a","d","i","o"]' },
-        { id: 'tree', word: '나무', emoji: '🌳', targetPhonemes: '["n","a","m","u"]' },
-        { id: 'lion', word: '사자', emoji: '🦁', targetPhonemes: '["s","a","j","a"]' },
-      ],
-    };
+    return { gameId: 'matching', pairs: shuffle(MATCHING_POOL).slice(0, 6) };
   }
-
   return null;
 }
 
@@ -300,7 +418,7 @@ export function getRecordData(user) {
       totalStudyTime: formatDuration(totalSeconds),
       weeklyStudyTime: formatDuration(weeklySeconds),
       completedMissions: results.length,
-      missionRate: results.length ? Math.min(100, Math.round((getClaimedMissions(user).size / 4) * 100)) : 0,
+      missionRate: results.length ? Math.min(100, Math.round((getClaimedMissionIds(user).size / 4) * 100)) : 0,
     },
     accuracyData: buildAccuracyData(results),
     soundStatuses: buildSoundStatuses(results),
@@ -336,7 +454,7 @@ export function getMyPageData(user) {
       totalStudyTime: formatDuration(results.reduce((sum, result) => sum + result.durationSeconds, 0)),
       practicedWords: `${results.length}개`,
       averageAccuracy: `${average(accuracies)}%`,
-      completedMissions: `${getClaimedMissions(user).size}개`,
+      completedMissions: `${getClaimedMissionIds(user).size}개`,
     },
     accountSettings: [
       { key: 'email', label: '이메일 변경' },
@@ -353,13 +471,48 @@ export function getMyPageData(user) {
   };
 }
 
+// --- wallet (SQL-backed) ---
+function ensureWallet(uid) {
+  let row = stmts.walletByUser.get(uid);
+  if (!row) {
+    stmts.insertWallet.run(uid);
+    row = stmts.walletByUser.get(uid);
+  }
+  return row;
+}
+
+function readWallet(uid) {
+  const row = ensureWallet(uid);
+  return {
+    spentCoins: row.spent_coins,
+    spentGems: row.spent_gems,
+    bonusCoins: row.bonus_coins,
+    bonusGems: row.bonus_gems,
+  };
+}
+
+function addWallet(uid, delta) {
+  ensureWallet(uid);
+  stmts.addWalletDelta.run(
+    delta.spentCoins ?? 0,
+    delta.spentGems ?? 0,
+    delta.bonusCoins ?? 0,
+    delta.bonusGems ?? 0,
+    uid,
+  );
+}
+
+function getPurchasedItemIds(uid) {
+  return new Set(stmts.purchasedByUser.all(uid).map((row) => row.item_id));
+}
+
 export function getRewards(user) {
   const results = getResults(user);
-  const claimed = getClaimedMissions(user);
+  const claimed = getClaimedMissionIds(user);
   const claimedCoins = [...claimed].reduce((sum, id) => sum + (missionRewardCoins[id] ?? 0), 0);
   const claimedGems = [...claimed].reduce((sum, id) => sum + (missionRewardGems[id] ?? 0), 0);
-  const wallet = getWallet(user);
-  const purchased = getPurchasedItems(user);
+  const wallet = readWallet(user.uid);
+  const purchased = getPurchasedItemIds(user.uid);
 
   return {
     userInfo: userInfo(user),
@@ -380,7 +533,7 @@ export function purchaseShopItem(user, itemId) {
   const item = getShopCatalog().find((shopItem) => shopItem.id === itemId);
   if (!item) return { ok: false, status: 404, message: '상품을 찾을 수 없습니다.' };
 
-  const purchased = getPurchasedItems(user);
+  const purchased = getPurchasedItemIds(user.uid);
   if (purchased.has(itemId)) {
     return { ok: false, status: 400, message: '이미 보유한 아이템이에요.' };
   }
@@ -393,15 +546,13 @@ export function purchaseShopItem(user, itemId) {
     return { ok: false, status: 400, message: '보석이 부족해요.' };
   }
 
-  const wallet = getWallet(user);
-  if (item.currency === 'coin') wallet.spentCoins += item.price;
-  else wallet.spentGems += item.price;
-
-  purchased.add(itemId);
-
-  if (item.id === '4') {
-    wallet.bonusGems += 10;
+  if (item.currency === 'coin') {
+    addWallet(user.uid, { spentCoins: item.price });
+  } else {
+    addWallet(user.uid, { spentGems: item.price });
   }
+  stmts.insertPurchase.run(user.uid, itemId);
+  if (item.id === '4') addWallet(user.uid, { bonusGems: 10 });
 
   return {
     ok: true,
@@ -426,21 +577,9 @@ function getShopCatalog() {
   ];
 }
 
-function getWallet(user) {
-  if (!state.walletByUserId.has(user.uid)) {
-    state.walletByUserId.set(user.uid, { spentCoins: 0, spentGems: 0, bonusCoins: 0, bonusGems: 0 });
-  }
-  const wallet = state.walletByUserId.get(user.uid);
-  if (wallet.bonusCoins === undefined) wallet.bonusCoins = 0;
-  return wallet;
-}
-
-function getPurchasedItems(user) {
-  const wallet = getWallet(user);
-  if (!wallet.purchasedItemIds) {
-    wallet.purchasedItemIds = new Set();
-  }
-  return wallet.purchasedItemIds;
+// --- missions ---
+function getClaimedMissionIds(user) {
+  return new Set(stmts.claimedMissionsByUser.all(user.uid).map((row) => row.mission_id));
 }
 
 export function claimMission(user, missionId) {
@@ -448,39 +587,21 @@ export function claimMission(user, missionId) {
   if (!mission) return { ok: false, status: 404, message: 'Mission not found' };
   if (!mission.claimable) return { ok: false, status: 400, message: 'Mission is not claimable' };
 
-  getClaimedMissions(user).add(missionId);
+  stmts.insertClaimedMission.run(user.uid, missionId);
   return { ok: true, balance: getRewards(user).balance, mission: { ...mission, claimable: false, actionLabel: '완료' } };
 }
 
-function getEventClaims(user) {
-  if (!state.eventClaimsByUserId.has(user.uid)) {
-    state.eventClaimsByUserId.set(user.uid, new Set());
-  }
-  return state.eventClaimsByUserId.get(user.uid);
+function getClaimableMissions(user) {
+  return buildMissionStates(getResults(user), getClaimedMissionIds(user)).filter((m) => m.claimable);
 }
 
-function getClaimedAttendanceDays(user) {
-  if (!state.claimedAttendanceDaysByUserId.has(user.uid)) {
-    state.claimedAttendanceDaysByUserId.set(user.uid, new Set());
-  }
-  return state.claimedAttendanceDaysByUserId.get(user.uid);
-}
-
-function getChargeLog(user) {
-  const today = new Date().toISOString().slice(0, 10);
-  if (!state.chargeLogByUserId.has(user.uid)) {
-    state.chargeLogByUserId.set(user.uid, { date: today, count: 0 });
-  }
-  const log = state.chargeLogByUserId.get(user.uid);
-  if (log.date !== today) {
-    log.date = today;
-    log.count = 0;
-  }
-  return log;
+// --- events ---
+function getEventClaimIds(uid) {
+  return new Set(stmts.eventClaimsByUser.all(uid).map((row) => row.event_id));
 }
 
 export function getEvents(user) {
-  const claims = getEventClaims(user);
+  const claims = getEventClaimIds(user.uid);
   const events = EVENT_CATALOG.map((event) => ({
     ...event,
     claimed: claims.has(event.id),
@@ -499,19 +620,18 @@ export function claimEventReward(user, eventId) {
   if (!event) return { ok: false, status: 404, message: '이벤트를 찾을 수 없습니다.' };
   if (event.status !== 'active') return { ok: false, status: 400, message: '진행 중인 이벤트가 아닙니다.' };
 
-  const claims = getEventClaims(user);
+  const claims = getEventClaimIds(user.uid);
   if (claims.has(eventId)) return { ok: false, status: 400, message: '이미 보상을 받았어요.' };
 
-  const wallet = getWallet(user);
-  const purchased = getPurchasedItems(user);
-
+  let bonusCoins = 0;
+  let bonusGems = 0;
   for (const reward of event.rewards) {
-    if (reward.type === 'coin') wallet.bonusCoins += reward.amount;
-    if (reward.type === 'gem') wallet.bonusGems += reward.amount;
-    if (reward.type === 'shop_item' && reward.shopItemId) purchased.add(reward.shopItemId);
+    if (reward.type === 'coin') bonusCoins += reward.amount;
+    if (reward.type === 'gem') bonusGems += reward.amount;
+    if (reward.type === 'shop_item' && reward.shopItemId) stmts.insertPurchase.run(user.uid, reward.shopItemId);
   }
-
-  claims.add(eventId);
+  if (bonusCoins || bonusGems) addWallet(user.uid, { bonusCoins, bonusGems });
+  stmts.insertEventClaim.run(user.uid, eventId);
 
   return {
     ok: true,
@@ -521,6 +641,7 @@ export function claimEventReward(user, eventId) {
   };
 }
 
+// --- charge ---
 export function getChargePackages() {
   return CHARGE_PACKAGES;
 }
@@ -530,19 +651,18 @@ export function chargeWallet(user, payload) {
   const packageId = String(payload.packageId ?? '');
   const packages = CHARGE_PACKAGES[currency];
   const pack = packages.find((item) => item.id === packageId);
-
   if (!pack) return { ok: false, status: 404, message: '충전 패키지를 찾을 수 없습니다.' };
 
-  const log = getChargeLog(user);
-  if (log.count >= 3) {
+  const today = new Date().toISOString().slice(0, 10);
+  const row = stmts.chargeLog.get(user.uid, today);
+  const currentCount = row?.count ?? 0;
+  if (currentCount >= 3) {
     return { ok: false, status: 400, message: '오늘은 더 이상 충전할 수 없어요. (하루 3회)' };
   }
 
-  const wallet = getWallet(user);
-  if (currency === 'coin') wallet.bonusCoins += pack.amount;
-  else wallet.bonusGems += pack.amount;
-
-  log.count += 1;
+  if (currency === 'coin') addWallet(user.uid, { bonusCoins: pack.amount });
+  else addWallet(user.uid, { bonusGems: pack.amount });
+  stmts.upsertChargeLog.run(user.uid, today, currentCount + 1);
 
   return {
     ok: true,
@@ -550,6 +670,11 @@ export function chargeWallet(user, payload) {
     balance: getRewards(user).balance,
     charged: { currency, amount: pack.amount },
   };
+}
+
+// --- attendance ---
+function getClaimedAttendanceDays(uid) {
+  return new Set(stmts.attendanceByUser.all(uid).map((row) => row.day));
 }
 
 export function claimAttendanceReward(user, day) {
@@ -561,18 +686,15 @@ export function claimAttendanceReward(user, day) {
   const results = getResults(user);
   const attendance = buildAttendance(results, user);
   const target = attendance.find((item) => item.day === dayNum);
-
   if (!target) return { ok: false, status: 404, message: '출석 보상을 찾을 수 없습니다.' };
   if (target.isClaimed) return { ok: false, status: 400, message: '이미 받은 보상이에요.' };
   if (!target.claimable) {
     return { ok: false, status: 400, message: '아직 보상을 받을 수 없어요. 오늘 학습 후 다시 시도해주세요.' };
   }
 
-  const wallet = getWallet(user);
-  if (target.rewardType === 'coin') wallet.bonusCoins += target.rewardAmount;
-  else wallet.bonusGems += target.rewardAmount;
-
-  getClaimedAttendanceDays(user).add(dayNum);
+  if (target.rewardType === 'coin') addWallet(user.uid, { bonusCoins: target.rewardAmount });
+  else addWallet(user.uid, { bonusGems: target.rewardAmount });
+  stmts.insertAttendance.run(user.uid, dayNum);
 
   return {
     ok: true,
@@ -582,29 +704,35 @@ export function claimAttendanceReward(user, day) {
   };
 }
 
+// --- settings ---
 export function getSettings(user) {
-  if (!state.settingsByUserId.has(user.uid)) {
-    state.settingsByUserId.set(user.uid, defaultSettings());
-  }
-  return state.settingsByUserId.get(user.uid);
+  const row = stmts.settingsByUser.get(user.uid);
+  if (row) return safeJsonParse(row.payload_json) ?? defaultSettings();
+  const initial = defaultSettings();
+  stmts.upsertSettings.run(user.uid, JSON.stringify(initial));
+  return initial;
 }
 
 export function updateSettings(user, payload) {
   const settings = getSettings(user);
-
   for (const section of ['notifications', 'learning', 'parent', 'privacy']) {
     if (payload[section] && typeof payload[section] === 'object') {
       settings[section] = { ...settings[section], ...payload[section] };
     }
   }
-
+  stmts.upsertSettings.run(user.uid, JSON.stringify(settings));
   return settings;
+}
+
+// --- notifications ---
+function getReadNotificationIds(uid) {
+  return new Set(stmts.readNotifsByUser.all(uid).map((row) => row.notification_id));
 }
 
 export function getNotifications(user) {
   const settings = getSettings(user);
   const prefs = settings.notifications;
-  const readSet = getReadNotificationIds(user);
+  const readSet = getReadNotificationIds(user.uid);
   const items = buildNotificationItems(user).filter((item) => {
     if (item.type === 'study' && !prefs.studyNotification) return false;
     if (item.type === 'reward' && !prefs.rewardNotification) return false;
@@ -613,11 +741,7 @@ export function getNotifications(user) {
     return true;
   });
 
-  const withReadState = items.map((item) => ({
-    ...item,
-    read: readSet.has(item.id),
-  }));
-
+  const withReadState = items.map((item) => ({ ...item, read: readSet.has(item.id) }));
   return {
     items: withReadState,
     unreadCount: withReadState.filter((item) => !item.read).length,
@@ -625,21 +749,17 @@ export function getNotifications(user) {
 }
 
 export function markNotificationRead(user, notificationId) {
-  getReadNotificationIds(user).add(notificationId);
+  stmts.insertReadNotif.run(user.uid, notificationId);
   return getNotifications(user);
 }
 
 export function markAllNotificationsRead(user) {
-  const readSet = getReadNotificationIds(user);
-  buildNotificationItems(user).forEach((item) => readSet.add(item.id));
+  const items = buildNotificationItems(user);
+  const insertMany = db.transaction((rows) => {
+    for (const item of rows) stmts.insertReadNotif.run(user.uid, item.id);
+  });
+  insertMany(items);
   return getNotifications(user);
-}
-
-function getReadNotificationIds(user) {
-  if (!state.readNotificationIdsByUserId.has(user.uid)) {
-    state.readNotificationIdsByUserId.set(user.uid, new Set());
-  }
-  return state.readNotificationIdsByUserId.get(user.uid);
 }
 
 function buildNotificationItems(user) {
@@ -721,35 +841,10 @@ function buildNotificationItems(user) {
   return items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
-const missionRewardCoins = {
-  'daily-study': 50,
-  'accuracy-80': 100,
-  'play-games': 80,
-};
-
-const missionRewardGems = {
-  'streak-7': 3,
-};
-
-function getResults(user) {
-  return state.learningResults.filter((result) => result.userId === user.uid);
-}
-
-function getClaimedMissions(user) {
-  if (!state.claimedMissionIdsByUserId.has(user.uid)) {
-    state.claimedMissionIdsByUserId.set(user.uid, new Set());
-  }
-  return state.claimedMissionIdsByUserId.get(user.uid);
-}
-
-function getClaimableMissions(user) {
-  return buildMissionStates(getResults(user), getClaimedMissions(user)).filter((mission) => mission.claimable);
-}
-
+// --- mission/attendance helpers (pure) ---
 function buildMissionStates(results, claimed) {
   const todayCount = countToday(results);
   const highAccuracyCount = results.filter((result) => result.accuracy >= 80).length;
-
   return [
     mission('daily-study', '오늘 학습하기 1회 완료', todayCount, 1, '50 코인', claimed),
     mission('accuracy-80', '정확도 80% 이상 달성', highAccuracyCount, 1, '100 코인', claimed),
@@ -761,7 +856,6 @@ function buildMissionStates(results, claimed) {
 function mission(id, title, current, total, rewardLabel, claimed) {
   const completed = current >= total;
   const alreadyClaimed = claimed.has(id);
-
   return {
     id,
     title,
@@ -774,12 +868,42 @@ function mission(id, title, current, total, rewardLabel, claimed) {
   };
 }
 
+function buildAttendance(results, user) {
+  const completedDays = Math.min(uniqueStudyDays(results), 7);
+  const claimed = getClaimedAttendanceDays(user.uid);
+  const studiedToday = countToday(results) > 0;
+  const firstUnclaimed = Array.from({ length: completedDays }, (_, index) => index + 1).find(
+    (day) => !claimed.has(day),
+  );
+
+  return Array.from({ length: 7 }, (_, index) => {
+    const day = index + 1;
+    const { reward, rewardType, rewardAmount } = getAttendanceReward(day);
+    const isClaimed = claimed.has(day);
+    const isCompleted = day <= completedDays;
+    return {
+      day,
+      label: `${day}일차`,
+      reward,
+      rewardType,
+      rewardAmount,
+      isActive: day === completedDays + 1,
+      isCompleted,
+      isClaimed,
+      claimable: isCompleted && !isClaimed && studiedToday && day === firstUnclaimed,
+    };
+  });
+}
+
+function getAttendanceReward(day) {
+  if (day === 7) return { reward: '200 코인', rewardType: 'coin', rewardAmount: 200 };
+  if (day % 3 === 0) return { reward: '보석 1', rewardType: 'gem', rewardAmount: 1 };
+  return { reward: '50 코인', rewardType: 'coin', rewardAmount: 50 };
+}
+
 function learningGame(id, number, name, description, practiceElement, record, imageSrc) {
   return {
-    id,
-    number,
-    name,
-    description,
+    id, number, name, description,
     imageLabel: `${name} 이미지`,
     imageSrc,
     imageFallbackSrc: imageSrc,
@@ -805,15 +929,12 @@ function buildAccuracyData(results) {
 function buildSoundStatuses(results) {
   const latest = results.at(-1);
   if (!latest) return [];
-
-  return [
-    {
-      sound: latest.targetWord || '최근 단어',
-      accuracy: latest.accuracy,
-      message: latest.accuracy >= 80 ? '잘하고 있어요' : '조금 더 연습해요',
-      color: latest.accuracy >= 80 ? 'green' : 'orange',
-    },
-  ];
+  return [{
+    sound: latest.targetWord || '최근 단어',
+    accuracy: latest.accuracy,
+    message: latest.accuracy >= 80 ? '잘하고 있어요' : '조금 더 연습해요',
+    color: latest.accuracy >= 80 ? 'green' : 'orange',
+  }];
 }
 
 function buildActivities(results) {
@@ -833,11 +954,9 @@ function buildRecommendations(results) {
       { phoneme: '/ㄴ/', description: '혀끝 위치를 느끼며 또렷하게 발음해보세요.' },
     ];
   }
-
   if (latest.accuracy >= 80) {
     return [{ phoneme: latest.targetWord || '최근 단어', description: '좋아요. 같은 단어를 조금 더 자연스럽게 말해보세요.' }];
   }
-
   return [{ phoneme: latest.targetWord || '최근 단어', description: '방금 연습한 단어를 한 번 더 천천히 말해보세요.' }];
 }
 
@@ -847,40 +966,6 @@ function buildBadges(results) {
   if (results.length >= 3) badges.push({ name: '세 번 연습', date: todayLabel(), title: '세 번 연습', acquiredAt: todayLabel() });
   if (results.some((result) => result.accuracy >= 90)) badges.push({ name: '정확도 90+', date: todayLabel(), title: '정확도 90+', acquiredAt: todayLabel() });
   return badges;
-}
-
-function getAttendanceReward(day) {
-  if (day === 7) return { reward: '200 코인', rewardType: 'coin', rewardAmount: 200 };
-  if (day % 3 === 0) return { reward: '보석 1', rewardType: 'gem', rewardAmount: 1 };
-  return { reward: '50 코인', rewardType: 'coin', rewardAmount: 50 };
-}
-
-function buildAttendance(results, user) {
-  const completedDays = Math.min(uniqueStudyDays(results), 7);
-  const claimed = getClaimedAttendanceDays(user);
-  const studiedToday = countToday(results) > 0;
-  const firstUnclaimed = Array.from({ length: completedDays }, (_, index) => index + 1).find(
-    (day) => !claimed.has(day),
-  );
-
-  return Array.from({ length: 7 }, (_, index) => {
-    const day = index + 1;
-    const { reward, rewardType, rewardAmount } = getAttendanceReward(day);
-    const isClaimed = claimed.has(day);
-    const isCompleted = day <= completedDays;
-
-    return {
-      day,
-      label: `${day}일차`,
-      reward,
-      rewardType,
-      rewardAmount,
-      isActive: day === completedDays + 1,
-      isCompleted,
-      isClaimed,
-      claimable: isCompleted && !isClaimed && studiedToday && day === firstUnclaimed,
-    };
-  });
 }
 
 function defaultSettings() {
@@ -954,4 +1039,9 @@ function formatDuration(seconds) {
 function todayLabel() {
   const date = new Date();
   return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`;
+}
+
+function safeJsonParse(value) {
+  if (typeof value !== 'string') return null;
+  try { return JSON.parse(value); } catch { return null; }
 }

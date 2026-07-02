@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { authFetch } from '../utils/authFetch';
 
 export const DATA_UPDATED_EVENT = 'hope:data-updated';
 
@@ -17,10 +18,7 @@ export function useBackendResource<T>(path: string, enabled: boolean) {
 
     const load = async () => {
       try {
-        const token = sessionStorage.getItem('hope_token');
-        const response = await fetch(path, {
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-        });
+        const response = await authFetch(path);
         const payload = (await response.json()) as T;
 
         if (!response.ok) {

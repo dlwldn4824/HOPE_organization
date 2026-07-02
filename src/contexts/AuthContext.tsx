@@ -1,6 +1,7 @@
-import { useCallback, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { SignupFormData } from '../types/auth';
 import type { UserProfile } from '../types/home';
+import { authFetch, SESSION_EXPIRED_EVENT } from '../utils/authFetch';
 import { AuthContext } from './useAuth';
 
 interface AuthResponse {
@@ -81,7 +82,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [applySession],
   );
 
-  const updateProfile = useCallback((profile: Partial<UserProfile>) => {
+  const updateProfile = useCallback(async (profile: Partial<UserProfile>) => {
+    if (sessionStorage.getItem('hope_token')) {
+      const body: Record<string, unknown> = {};
+      if (profile.nickname !== undefined) body.nickname = profile.nickname;
+      if (profile.gender !== undefined) body.gender = profile.gender;
+      if (Object.keys(body).length > 0) {
+        try {
+          await authFetch(`${API_BASE_URL}/api/me`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+          });
+        } catch {
+          // best-effort — fall through to local update so the UI still responds
+        }
+      }
+    }
     setUser((prev) => {
       if (!prev) return prev;
       const next = { ...prev, ...profile };
@@ -96,6 +113,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     sessionStorage.removeItem('hope_user');
     sessionStorage.removeItem('hope_token');
   }, []);
+
+  // Auto-logout when the server says our token is expired/invalid.
+  useEffect(() => {
+    const onExpired = () => {
+      if (sessionStorage.getItem('hope_token')) logout();
+    };
+    window.addEventListener(SESSION_EXPIRED_EVENT, onExpired);
+    return () => window.removeEventListener(SESSION_EXPIRED_EVENT, onExpired);
+  }, [logout]);
 
   const value = useMemo(
     () => ({

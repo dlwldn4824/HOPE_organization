@@ -1,0 +1,94 @@
+# HOPE 백엔드 + AI 배포 (Harvester 서버 · Docker Compose · Cloudflare Tunnel)
+# 자세한 절차: docs/DEPLOY.md
+#
+# 외부 라우팅:  hope.harvester.kr ─cf tunnel─▶ Harvester localhost:8093 ─▶ hope-backend :4000
+# 내부 호출:    hope-backend ──docker network──▶ hope-ai :8000
+#
+# 게임 인프라(/root/dduckyee)의 cloudflared 컨테이너를 그대로 재사용한다.
+
+services:
+  # ---------- 백엔드 (Node.js) ----------
+  hope-backend:
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+    container_name: hope-backend
+    environment:
+      NODE_ENV: production
+      PORT: "4000"
+      HOPE_DB_PATH: "/app/data/hope.db"
+      HOPE_TOKEN_TTL_HOURS: "${HOPE_TOKEN_TTL_HOURS:-24}"
+      # 기본은 로컬 hope-ai 로 붙는다. go-neung 을 계속 쓰려면
+      # deploy/.env 에 SPEECH_COACH_API_BASE=https://go-neung.activejang.com 로 override.
+      SPEECH_COACH_API_BASE: "${SPEECH_COACH_API_BASE:-http://hope-ai:8000}"
+      SPEECH_TIMEOUT_MS: "${SPEECH_TIMEOUT_MS:-30000}"
+      SPEECH_RETRIES: "${SPEECH_RETRIES:-1}"
+      SPEECH_MAX_BODY_BYTES: "${SPEECH_MAX_BODY_BYTES:-10485760}"
+      LOG_LEVEL: "${LOG_LEVEL:-info}"
+      CORS_ORIGIN: "${CORS_ORIGIN:-*}"
+    ports:
+      # 호스트 8093 (예약된 포트 없음, dduckyee 8090-8095 라인의 유일한 빈 슬롯)
+      - "8093:4000"
+    volumes:
+      - hopedata:/app/data
+    restart: unless-stopped
+    depends_on:
+      hope-ai:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://localhost:4000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ---------- AI 서버 (Python FastAPI, CPU 추론) ----------
+  hope-ai:
+    build:
+      # Hope-AI 브랜치 소스가 서버의 ~/hope-ai/ 에 checkout 되어 있어야 함.
+      # deploy/harvester.sh 가 git clone/pull 로 관리.
+      context: /home/harvester/hope-ai/speech-coach
+      dockerfile: Dockerfile
+    container_name: hope-ai
+    environment:
+      HOPE_CKPT_DIR: "/checkpoints/stage1b-mix/final"
+      HOPE_MODEL_VERSION: "stage1b-mix"
+      # PyTorch CPU 스레드 (Ryzen 9 7950X3D VM 4 vCPU)
+      OMP_NUM_THREADS: "4"
+      MKL_NUM_THREADS: "4"
+    volumes:
+      # 체크포인트는 이미지에 안 넣고 host volume 으로 주입.
+      # 서버의 /home/harvester/hope-checkpoints/stage1b-mix/final/*.safetensors 등.
+      - type: bind
+        source: /home/harvester/hope-checkpoints
+        target: /checkpoints
+        read_only: true
+    restart: unless-stopped
+    # 외부 노출 X — hope-backend 만 docker network 통해 붙는다.
+    expose:
+      - "8000"
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 8s
+      start_period: 90s   # 모델 로드에 30~60초 걸림
+      retries: 5
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  hopedata:
+    # SQLite 파일 (backend/data/hope.db) 이 여기에 저장된다.
+    # 컨테이너 재빌드/재시작해도 유지. 완전 삭제하려면 `docker compose down -v`.

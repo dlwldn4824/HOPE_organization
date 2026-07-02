@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import { useMemo } from 'react';
 import { useAuth } from '../contexts/useAuth';
 import { notifyDataUpdated, useBackendResource } from './useBackendResource';
+import { authFetch } from '../utils/authFetch';
 import type {
   LearningSettings,
   NotificationSettings,
@@ -43,13 +44,9 @@ interface SettingsResponse {
 type SettingsPatch = Partial<SettingsResponse>;
 
 async function patchSettingsApi(patch: SettingsPatch) {
-  const token = sessionStorage.getItem('hope_token');
-  const response = await fetch(`${API_BASE_URL}/api/settings`, {
+  const response = await authFetch(`${API_BASE_URL}/api/settings`, {
     method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(patch),
   });
 
