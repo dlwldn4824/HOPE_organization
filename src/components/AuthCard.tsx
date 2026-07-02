@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Lock, Mail, User } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/useAuth';
 import type { AuthTab, LoginFormData, SignupFormData, SignupFormErrors } from '../types/auth';
 
 interface AuthCardProps {

@@ -2,7 +2,7 @@ import { Shield } from 'lucide-react';
 import { BottomNavigation, Sidebar } from '../components/Sidebar';
 import { HomeHeader } from '../components/HomeHeader';
 import { PlaceholderBox } from '../components/PlaceholderBox';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/useAuth';
 
 const CARD_CLASS =
   'min-w-0 overflow-hidden rounded-[28px] border border-slate-100 bg-white p-6 shadow-sm';

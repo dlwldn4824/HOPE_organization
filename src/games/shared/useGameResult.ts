@@ -5,7 +5,12 @@ import { accuracyToStars } from './gameScoring';
 import { saveLearningResult } from '../../utils/speechApi';
 
 export function useGameResult(gameId: GameId) {
-  const startedAtRef = useRef(Date.now());
+  const startedAtRef = useRef<number | null>(null);
+
+  const ensureStart = () => {
+    if (startedAtRef.current === null) startedAtRef.current = Date.now();
+    return startedAtRef.current;
+  };
 
   const resetSession = useCallback(() => {
     startedAtRef.current = Date.now();
@@ -20,8 +25,8 @@ export function useGameResult(gameId: GameId) {
       analysis?: unknown;
       earnedStars?: number;
     }): Promise<GameResultSummary> => {
-      const durationSeconds = Math.max(30, Math.round((Date.now() - startedAtRef.current) / 1000));
-      const earnedStars = input.earnedStars ?? accuracyToStars(input.accuracy);
+const durationSeconds = Math.max(30, Math.round((Date.now() - ensureStart()) / 1000));
+const earnedStars = input.earnedStars ?? accuracyToStars(input.accuracy);
 
       await saveLearningResult({
         gameId,

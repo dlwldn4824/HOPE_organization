@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { useMemo } from 'react';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/useAuth';
 import { notifyDataUpdated, useBackendResource } from './useBackendResource';
 import { authFetch } from '../utils/authFetch';
 import type {
