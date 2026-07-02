@@ -4,10 +4,10 @@ import type { SpeechAnalyzeResult } from '../../utils/speechApi';
 import { WhackScene, type CatchEffect, type SceneMole } from './WhackScene';
 import {
   WHACK_GAME_DURATION_SECONDS,
-  WHACK_LISTEN_COOLDOWN_MS,
   WHACK_MAX_ACTIVE_MOLES,
   WHACK_MOLE_CAUGHT_MS,
   WHACK_MOLE_HIDE_MS,
+  WHACK_MOLE_RISE_MS,
   WHACK_MOLE_VISIBLE_MS,
   WHACK_SPAWN_INTERVAL_MS,
   WHACK_VOICE_PASS_THRESHOLD,
@@ -95,12 +95,14 @@ export function WhackBoard({
   const occupiedSlotsRef = useRef<Set<number>>(new Set());
   const moleTimersRef = useRef<Map<string, MoleTimers>>(new Map());
   const spawnerRef = useRef<number | null>(null);
-  const listenLoopActiveRef = useRef(false);
   const countdownRef = useRef<number | null>(null);
   const onCompleteRef = useRef(onComplete);
   const recordAudioRef = useRef(recordAudio);
   const analyzeAudioRef = useRef(analyzeAudio);
-  const listenForVisibleWordsRef = useRef<() => Promise<void>>(async () => {});
+  const listenForMoleRef = useRef<(moleId: string) => Promise<void>>(async () => {});
+  const pendingListenIdsRef = useRef<Set<string>>(new Set());
+  const tryStartNextListenRef = useRef<() => void>(() => {});
+  const requestMoleListenRef = useRef<(moleId: string) => void>(() => {});
 
   useEffect(() => {
     onCompleteRef.current = onComplete;
@@ -165,17 +167,34 @@ export function WhackBoard({
     [removeMole, setMolesSynced],
   );
 
+  const pauseMoleHide = useCallback((moleId: string) => {
+    const timers = moleTimersRef.current.get(moleId);
+    if (!timers?.hide) return;
+    window.clearTimeout(timers.hide);
+    moleTimersRef.current.set(moleId, { ...timers, hide: undefined });
+  }, []);
+
+  const scheduleMoleHide = useCallback(
+    (moleId: string, delayMs: number) => {
+      pauseMoleHide(moleId);
+      const hide = window.setTimeout(() => hideMole(moleId), delayMs);
+      const existing = moleTimersRef.current.get(moleId) ?? {};
+      moleTimersRef.current.set(moleId, { ...existing, hide });
+    },
+    [hideMole, pauseMoleHide],
+  );
+
   const scheduleMoleLifecycle = useCallback(
     (moleId: string) => {
       const rise = window.setTimeout(() => {
         setMolesSynced((current) =>
           current.map((m) => (m.id === moleId ? { ...m, phase: 'up' as const } : m)),
         );
-        void listenForVisibleWordsRef.current();
-      }, 50);
+        requestMoleListenRef.current(moleId);
+      }, WHACK_MOLE_RISE_MS);
 
-      const hide = window.setTimeout(() => hideMole(moleId), WHACK_MOLE_VISIBLE_MS);
-      moleTimersRef.current.set(moleId, { rise, hide });
+      const safetyHide = window.setTimeout(() => hideMole(moleId), WHACK_MOLE_VISIBLE_MS + 4000);
+      moleTimersRef.current.set(moleId, { rise, hide: safetyHide });
     },
     [hideMole, setMolesSynced],
   );
@@ -186,7 +205,7 @@ export function WhackBoard({
 
     if (spawnerRef.current) window.clearInterval(spawnerRef.current);
     if (countdownRef.current) window.clearInterval(countdownRef.current);
-    listenLoopActiveRef.current = false;
+    pendingListenIdsRef.current.clear();
 
     spawnerRef.current = null;
     countdownRef.current = null;
@@ -195,7 +214,7 @@ export function WhackBoard({
     occupiedSlotsRef.current.clear();
     setMoles([]);
     setGameOver(true);
-    onCompleteRef.current(statsRef.current);
+    queueMicrotask(() => onCompleteRef.current(statsRef.current));
   }, [clearAllMoleTimers]);
 
   const markCaught = useCallback(
@@ -241,64 +260,96 @@ export function WhackBoard({
     [clearMoleTimers, removeMole, setMolesSynced],
   );
 
-  const listenForVisibleWords = useCallback(async () => {
-    if (finishedRef.current || listeningRef.current) return;
+  const requestMoleListen = useCallback(
+    (moleId: string) => {
+      pendingListenIdsRef.current.add(moleId);
+      pauseMoleHide(moleId);
+      tryStartNextListenRef.current();
+    },
+    [pauseMoleHide],
+  );
 
-    const active = molesRef.current.filter((m) => m.phase === 'up');
-    if (!active.length) return;
+  requestMoleListenRef.current = requestMoleListen;
 
-    listeningRef.current = true;
-    setIsListening(true);
+  const tryStartNextListen = useCallback(() => {
+    if (listeningRef.current || finishedRef.current) return;
 
-    try {
-      const audio = await recordAudioRef.current();
-      const results = await Promise.all(
-        active.map(async (mole) => {
-          try {
-            const analysis = await analyzeAudioRef.current(audio, {
-              targetWord: mole.label,
-              targetPhonemes: mole.targetPhonemes,
-            });
-            return { mole, accuracy: analysis.score ?? 0 };
-          } catch {
-            return { mole, accuracy: 0 };
+    for (const moleId of pendingListenIdsRef.current) {
+      const mole = molesRef.current.find((item) => item.id === moleId);
+      if (!mole || mole.phase === 'caught' || mole.phase === 'hiding') {
+        pendingListenIdsRef.current.delete(moleId);
+        continue;
+      }
+      if (mole.phase === 'rising') continue;
+
+      pendingListenIdsRef.current.delete(moleId);
+      void listenForMoleRef.current(moleId);
+      return;
+    }
+
+    const orphan = molesRef.current.find((item) => item.phase === 'up');
+    if (orphan) {
+      requestMoleListen(orphan.id);
+    }
+  }, [requestMoleListen]);
+
+  tryStartNextListenRef.current = tryStartNextListen;
+
+  const listenForMole = useCallback(
+    async (moleId: string) => {
+      if (finishedRef.current || listeningRef.current) return;
+
+      const mole = molesRef.current.find((item) => item.id === moleId);
+      if (!mole || mole.phase !== 'up') {
+        tryStartNextListenRef.current();
+        return;
+      }
+
+      listeningRef.current = true;
+      setIsListening(true);
+      pauseMoleHide(moleId);
+      let didCatch = false;
+
+      try {
+        const audio = await recordAudioRef.current();
+        try {
+          const analysis = await analyzeAudioRef.current(audio, {
+            targetWord: mole.label,
+            targetPhonemes: mole.targetPhonemes,
+          });
+          const accuracy = analysis.score ?? 0;
+
+          if (accuracy >= WHACK_VOICE_PASS_THRESHOLD) {
+            const stillCatchable = molesRef.current.find(
+              (item) =>
+                item.id === moleId && (item.phase === 'up' || item.phase === 'hiding'),
+            );
+            if (stillCatchable) {
+              didCatch = true;
+              markCaught(stillCatchable, accuracy);
+            }
           }
-        }),
-      );
-
-      const best = results
-        .filter((result) => result.accuracy >= WHACK_VOICE_PASS_THRESHOLD)
-        .sort((a, b) => b.accuracy - a.accuracy)[0];
-
-      if (best) {
-        const stillUp = molesRef.current.find(
-          (mole) => mole.id === best.mole.id && mole.phase === 'up',
-        );
-        if (stillUp) {
-          markCaught(stillUp, best.accuracy);
+        } catch {
+          // 분석 실패는 다음 두더지에서 재시도
         }
+      } catch {
+        // 녹음 실패는 다음 두더지에서 재시도
+      } finally {
+        const current = molesRef.current.find((item) => item.id === moleId);
+        if (current?.phase === 'up') {
+          scheduleMoleHide(moleId, 400);
+        }
+
+        listeningRef.current = false;
+        setIsListening(false);
+        const queueDelayMs = didCatch ? 220 : 0;
+        window.setTimeout(() => tryStartNextListenRef.current(), queueDelayMs);
       }
-    } catch {
-      // 녹음 실패는 다음 주기에 재시도
-    } finally {
-      listeningRef.current = false;
-      setIsListening(false);
-    }
-  }, [markCaught]);
+    },
+    [markCaught, pauseMoleHide, scheduleMoleHide],
+  );
 
-  listenForVisibleWordsRef.current = listenForVisibleWords;
-
-  const runListenLoop = useCallback(async () => {
-    listenLoopActiveRef.current = true;
-
-    while (listenLoopActiveRef.current && !finishedRef.current) {
-      const hasActiveMole = molesRef.current.some((mole) => mole.phase === 'up');
-      if (hasActiveMole && !listeningRef.current) {
-        await listenForVisibleWords();
-      }
-      await new Promise((resolve) => window.setTimeout(resolve, WHACK_LISTEN_COOLDOWN_MS));
-    }
-  }, [listenForVisibleWords]);
+  listenForMoleRef.current = listenForMole;
 
   const spawnMole = useCallback(() => {
     if (finishedRef.current || roundsRef.current.length === 0) return;
@@ -341,6 +392,7 @@ export function WhackBoard({
   useEffect(() => {
     finishedRef.current = false;
     statsRef.current = { caught: 0, wrong: 0, score: 0, accuracies: [] };
+    pendingListenIdsRef.current.clear();
     moleIdRef.current = 0;
     occupiedSlotsRef.current.clear();
     setGameOver(false);
@@ -352,14 +404,12 @@ export function WhackBoard({
     setScorePulseKey(0);
     setSceneShakeKey(0);
 
-    void prepareMicrophone().catch(() => {
-      // 마이크 권한 거부 시 녹음 단계에서 재시도
-    });
+    void prepareMicrophone();
 
     countdownRef.current = window.setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
-          endGame();
+          if (!finishedRef.current) queueMicrotask(() => endGame());
           return 0;
         }
         return prev - 1;
@@ -368,10 +418,9 @@ export function WhackBoard({
 
     spawnMole();
     spawnerRef.current = window.setInterval(spawnMole, WHACK_SPAWN_INTERVAL_MS);
-    void runListenLoop();
 
     return () => {
-      listenLoopActiveRef.current = false;
+      pendingListenIdsRef.current.clear();
       if (countdownRef.current) window.clearInterval(countdownRef.current);
       if (spawnerRef.current) window.clearInterval(spawnerRef.current);
       clearAllMoleTimers();
@@ -384,7 +433,6 @@ export function WhackBoard({
     endGame,
     prepareMicrophone,
     releaseMicrophone,
-    runListenLoop,
     spawnMole,
   ]);
 

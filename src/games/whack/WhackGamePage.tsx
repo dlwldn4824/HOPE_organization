@@ -7,7 +7,14 @@ import { useSpeechRecorder } from '../shared/useSpeechRecorder';
 import { useGameSession } from '../../hooks/useGameSession';
 import type { GameResultSummary } from '../../types/games';
 import { WhackBoard, type WhackRoundResult } from './WhackBoard';
-import { computeWhackGemBonus, computeWhackRoundCoins, computeWhackStars, WHACK_GAME_DURATION_SECONDS, WHACK_MOLE_GOAL, WHACK_RECORD_MS } from './whackRewards';
+import {
+  computeWhackGemBonus,
+  computeWhackRoundCoins,
+  computeWhackStars,
+  WHACK_GAME_DURATION_SECONDS,
+  WHACK_MOLE_GOAL,
+  WHACK_SPEAK_WINDOW_MS,
+} from './whackRewards';
 
 type Phase = 'whack' | 'finished';
 
@@ -15,7 +22,7 @@ export function WhackGamePage() {
   const { session } = useGameSession('whack');
   const { resetSession, submitResult } = useGameResult('whack');
   const { recordAudio, analyzeAudio, prepareMicrophone, releaseMicrophone } = useSpeechRecorder({
-    maxDurationMs: WHACK_RECORD_MS,
+    maxDurationMs: WHACK_SPEAK_WINDOW_MS,
     keepStreamOpen: true,
   });
 

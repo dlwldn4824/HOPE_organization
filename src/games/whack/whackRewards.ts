@@ -1,13 +1,22 @@
+/** 두더지가 올라온 뒤 사용자가 말할 수 있는 시간 (= 녹음 길이) */
+export const WHACK_SPEAK_WINDOW_MS = 4000;
+export const WHACK_MOLE_RISE_MS = 50;
+/** 녹음 종료 후 API 분석 동안 두더지를 화면에 유지 */
+export const WHACK_ANALYZE_HOLD_MS = 1200;
+
+export const WHACK_RECORD_MS = WHACK_SPEAK_WINDOW_MS;
+export const WHACK_MOLE_VISIBLE_MS =
+  WHACK_MOLE_RISE_MS + WHACK_SPEAK_WINDOW_MS + WHACK_ANALYZE_HOLD_MS;
+
 export const WHACK_GAME_DURATION_SECONDS = 60;
 export const WHACK_MOLE_GOAL = 5;
 export const WHACK_MAX_ACTIVE_MOLES = 5;
-export const WHACK_MOLE_VISIBLE_MS = 6400;
 export const WHACK_MOLE_HIDE_MS = 700;
 export const WHACK_MOLE_CAUGHT_MS = 1500;
-export const WHACK_SPAWN_INTERVAL_MS = 2200;
+/** 한 두더지 세션(올라옴→녹음→분석)보다 길게 — 겹침 시 대기열 처리 */
+export const WHACK_SPAWN_INTERVAL_MS =
+  WHACK_MOLE_RISE_MS + WHACK_SPEAK_WINDOW_MS + WHACK_ANALYZE_HOLD_MS + 2200;
 export const WHACK_VOICE_PASS_THRESHOLD = 58;
-export const WHACK_LISTEN_COOLDOWN_MS = 350;
-export const WHACK_RECORD_MS = 2200;
 
 /** 발음 정확도(0–100)에 비례한 잡기 점수 */
 export function computeWhackCatchScore(accuracy: number) {
