@@ -1016,10 +1016,26 @@ function bestRecord(results, gameId) {
 }
 
 function buildAccuracyData(results) {
-  return results.slice(-5).map((result, index) => ({
-    label: result.targetWord || `${index + 1}회차`,
-    value: result.accuracy,
-  }));
+  const windowDays = 30;
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+  start.setDate(start.getDate() - (windowDays - 1));
+
+  const byDay = new Map();
+  for (const result of results) {
+    const dayKey = result.createdAt.slice(0, 10);
+    const dayDate = new Date(dayKey);
+    if (Number.isNaN(dayDate.getTime()) || dayDate < start) continue;
+    if (!byDay.has(dayKey)) byDay.set(dayKey, []);
+    byDay.get(dayKey).push(result.accuracy);
+  }
+
+  return Array.from(byDay.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([dayKey, accuracies]) => ({
+      label: `${new Date(dayKey).getDate()}일`,
+      value: Math.round(average(accuracies)),
+    }));
 }
 
 function buildSoundStatuses(results) {
