@@ -14,7 +14,7 @@
 # Prereq (한 번만 세팅):
 #   - ~/.ssh/config 에 Harvester 호스트 (Game 프로젝트 세팅과 동일)
 #   - Harvester ~/hope/deploy/.env (deploy/.env.example 참고)
-#   - Cloudflare 터널 55cbfbbf-... 에 hope.harvester.kr → localhost:8093 ingress
+#   - Cloudflare 터널 55cbfbbf-... 에 ddobakddobak.harvester.kr → localhost:8093 ingress
 #   - hope-ai 사용 시:
 #     * ssh Harvester "sudo mkdir -p ~/hope-checkpoints && sudo chown harvester:harvester ~/hope-checkpoints"
 #     * ssh Harvester "git clone -b Hope-AI https://github.com/dlwldn4824/HOPE_organization.git ~/hope-ai"
@@ -103,8 +103,8 @@ ssh "${REMOTE_HOST}" "cd ${REMOTE_DIR} && \
 
 echo ""
 echo "✅  Deploy submitted. Verify:"
-echo "    curl -s https://hope.harvester.kr/health | jq .upstream"
-echo "    curl -sI https://hope.harvester.kr/ | head -3   # 프론트 (200)"
+echo "    curl -s https://ddobakddobak.harvester.kr/health | jq .upstream"
+echo "    curl -sI https://ddobakddobak.harvester.kr/ | head -3   # 프론트 (200)"
 echo "    ssh ${REMOTE_HOST} 'docker logs hope-web --tail 10'"
 echo "    ssh ${REMOTE_HOST} 'docker logs hope-backend --tail 20'"
 if [ "$DEPLOY_AI" = "1" ]; then
