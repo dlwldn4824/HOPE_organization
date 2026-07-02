@@ -1,12 +1,39 @@
-# HOPE 백엔드 + AI 배포 (Harvester 서버 · Docker Compose · Cloudflare Tunnel)
+# HOPE 프론트 + 백엔드 + AI 배포 (Harvester 서버 · Docker Compose · Cloudflare Tunnel)
 # 자세한 절차: docs/DEPLOY.md
 #
-# 외부 라우팅:  hope.harvester.kr ─cf tunnel─▶ Harvester localhost:8093 ─▶ hope-backend :4000
+# 외부 라우팅:  hope.harvester.kr ─cf tunnel─▶ Harvester localhost:8094 ─▶ hope-web :80
+#                                                                          ├─ /              → 프론트 정적
+#                                                                          └─ /api,/health,/docs → hope-backend :4000
 # 내부 호출:    hope-backend ──docker network──▶ hope-ai :8000
 #
 # 게임 인프라(/root/dduckyee)의 cloudflared 컨테이너를 그대로 재사용한다.
 
 services:
+  # ---------- 프론트 + 리버스 프록시 (Vite 빌드 → nginx) ----------
+  hope-web:
+    build:
+      context: ..
+      dockerfile: deploy/hope-web/Dockerfile
+    container_name: hope-web
+    ports:
+      # 호스트 8094 (cloudflared 가 hope.harvester.kr → localhost:8094 로 프록시)
+      - "8094:80"
+    restart: unless-stopped
+    depends_on:
+      hope-backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://localhost/healthz || exit 1"]
+      interval: 30s
+      timeout: 5s
+      start_period: 5s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
   # ---------- 백엔드 (Node.js) ----------
   hope-backend:
     build:
@@ -25,10 +52,12 @@ services:
       SPEECH_RETRIES: "${SPEECH_RETRIES:-1}"
       SPEECH_MAX_BODY_BYTES: "${SPEECH_MAX_BODY_BYTES:-10485760}"
       LOG_LEVEL: "${LOG_LEVEL:-info}"
+      # 같은 오리진에서 nginx 를 통해 프록시되므로 CORS 불필요. 다만 개발용
+      # (`npm run dev` from :5173) 이 붙을 수도 있어 여전히 * 허용.
       CORS_ORIGIN: "${CORS_ORIGIN:-*}"
-    ports:
-      # 호스트 8093 (예약된 포트 없음, dduckyee 8090-8095 라인의 유일한 빈 슬롯)
-      - "8093:4000"
+    # 외부 노출 제거 — hope-web (nginx) 만 docker network 로 부른다.
+    expose:
+      - "4000"
     volumes:
       - hopedata:/app/data
     restart: unless-stopped
