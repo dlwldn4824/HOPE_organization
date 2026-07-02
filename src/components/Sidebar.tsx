@@ -72,7 +72,7 @@ export function Sidebar({ activeMenu }: { activeMenu?: SidebarActiveMenu } = {})
 
   return (
     <aside className="hidden w-[240px] shrink-0 flex-col rounded-r-[32px] bg-white px-5 py-8 shadow-sm lg:flex">
-      <HopeLogo className="mb-8 h-12 w-auto max-w-[140px] object-contain" />
+      <HopeLogo className="mb-8 h-12 w-auto max-w-[180px] object-contain" />
 
       <nav className="flex flex-col gap-2">
         {MENU_ITEMS.map((item) => (

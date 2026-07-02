@@ -1,12 +1,12 @@
-export type GameId = 'pitch' | 'monster' | 'matching';
+export type GameId = 'pitch' | 'monster' | 'matching' | 'whack';
 
 export type GamePhase = 'ready' | 'playing' | 'round-end' | 'finished' | 'failed';
 
 export interface PitchRound {
   targetWord: string;
-  targetHz: number;
   targetPhonemes: string;
-  hint: string;
+  hint?: string;
+  emoji?: string;
 }
 
 export interface MonsterRound {
@@ -38,7 +38,27 @@ export interface MatchingGameSession {
   pairs: CardPair[];
 }
 
-export type GameSession = PitchGameSession | MonsterGameSession | MatchingGameSession;
+export interface WhackRound {
+  targetWord: string;
+  targetPhonemes: string;
+  emoji: string;
+  distractors: string[];
+  passThreshold: number;
+  whackSeconds: number;
+}
+
+export interface WhackGameSession {
+  gameId: 'whack';
+  rounds: WhackRound[];
+}
+
+export type GameSession = PitchGameSession | MonsterGameSession | MatchingGameSession | WhackGameSession;
+
+export interface WhackResultStats {
+  totalMolesCaught: number;
+  bonusCoins: number;
+  bonusGems: number;
+}
 
 export interface GameResultSummary {
   gameId: GameId;
@@ -48,4 +68,5 @@ export interface GameResultSummary {
   durationSeconds: number;
   won: boolean;
   message: string;
+  whackStats?: WhackResultStats;
 }

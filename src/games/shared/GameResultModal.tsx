@@ -20,6 +20,16 @@ export function GameResultModal({ result, onRetry }: GameResultModalProps) {
           <span className="text-sm font-bold text-hope-text">획득 별 {result.earnedStars}개</span>
         </div>
 
+        {result.whackStats ? (
+          <div className="mt-3 space-y-2 rounded-2xl bg-amber-50 px-4 py-3 text-sm font-semibold text-hope-text">
+            <p>두더지 {result.whackStats.totalMolesCaught}마리 처치</p>
+            <p>보너스 코인 +{result.whackStats.bonusCoins}</p>
+            {result.whackStats.bonusGems > 0 ? (
+              <p className="text-pink-500">보너스 보석 +{result.whackStats.bonusGems}</p>
+            ) : null}
+          </div>
+        ) : null}
+
         <div className="mt-6 grid grid-cols-2 gap-3">
           <button
             type="button"

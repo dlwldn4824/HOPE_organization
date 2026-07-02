@@ -23,9 +23,10 @@ export function useGameResult(gameId: GameId) {
       won: boolean;
       message: string;
       analysis?: unknown;
+      earnedStars?: number;
     }): Promise<GameResultSummary> => {
-      const durationSeconds = Math.max(30, Math.round((Date.now() - ensureStart()) / 1000));
-      const earnedStars = accuracyToStars(input.accuracy);
+const durationSeconds = Math.max(30, Math.round((Date.now() - ensureStart()) / 1000));
+const earnedStars = input.earnedStars ?? accuracyToStars(input.accuracy);
 
       await saveLearningResult({
         gameId,

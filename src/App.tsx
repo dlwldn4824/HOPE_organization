@@ -7,7 +7,7 @@ const Home = lazy(() => import('./pages/Home').then((m) => ({ default: m.Home })
 const LearningPage = lazy(() => import('./pages/LearningPage').then((m) => ({ default: m.LearningPage })));
 const PitchGamePage = lazy(() => import('./games/pitch/PitchGamePage').then((m) => ({ default: m.PitchGamePage })));
 const MonsterGamePage = lazy(() => import('./games/monster/MonsterGamePage').then((m) => ({ default: m.MonsterGamePage })));
-const MatchingGamePage = lazy(() => import('./games/matching/MatchingGamePage').then((m) => ({ default: m.MatchingGamePage })));
+const WhackGamePage = lazy(() => import('./games/whack/WhackGamePage').then((m) => ({ default: m.WhackGamePage })));
 const SpeechPracticePage = lazy(() =>
   import('./pages/SpeechPracticePage').then((m) => ({ default: m.SpeechPracticePage })),
 );
@@ -21,6 +21,30 @@ const SettingPage = lazy(() => import('./pages/SettingPage').then((m) => ({ defa
 const GuidePage = lazy(() => import('./pages/GuidePage').then((m) => ({ default: m.GuidePage })));
 const SupportPage = lazy(() => import('./pages/SupportPage').then((m) => ({ default: m.SupportPage })));
 const PrivacyPage = lazy(() => import('./pages/PrivacyPage').then((m) => ({ default: m.PrivacyPage })));
+
+const ParentHomePage = lazy(() => import('./pages/parent/ParentHomePage').then((m) => ({ default: m.ParentHomePage })));
+const ParentAnalysisPage = lazy(() =>
+  import('./pages/parent/ParentAnalysisPage').then((m) => ({ default: m.ParentAnalysisPage })),
+);
+const ParentAnalysisDetailPage = lazy(() =>
+  import('./pages/parent/ParentAnalysisDetailPage').then((m) => ({ default: m.ParentAnalysisDetailPage })),
+);
+const ParentRecordsPage = lazy(() =>
+  import('./pages/parent/ParentRecordsPage').then((m) => ({ default: m.ParentRecordsPage })),
+);
+const ParentTherapistPage = lazy(() =>
+  import('./pages/parent/ParentTherapistPage').then((m) => ({ default: m.ParentTherapistPage })),
+);
+const ParentNotificationsPage = lazy(() =>
+  import('./pages/parent/ParentNotificationsPage').then((m) => ({ default: m.ParentNotificationsPage })),
+);
+const ParentGrowthPage = lazy(() =>
+  import('./pages/parent/ParentGrowthPage').then((m) => ({ default: m.ParentGrowthPage })),
+);
+const ParentMyPage = lazy(() => import('./pages/parent/ParentMyPage').then((m) => ({ default: m.ParentMyPage })));
+const ParentSettingsPage = lazy(() =>
+  import('./pages/parent/ParentSettingsPage').then((m) => ({ default: m.ParentSettingsPage })),
+);
 
 function PageFallback() {
   return (
@@ -41,7 +65,8 @@ export default function App() {
             <Route path="/learning" element={<LearningPage />} />
             <Route path="/learning/pitch" element={<PitchGamePage />} />
             <Route path="/learning/monster" element={<MonsterGamePage />} />
-            <Route path="/learning/matching" element={<MatchingGamePage />} />
+            <Route path="/learning/matching" element={<Navigate to="/learning" replace />} />
+            <Route path="/learning/whack" element={<WhackGamePage />} />
             <Route path="/dev/speech/pitch" element={<SpeechPracticePage mode="pitch" />} />
             <Route path="/dev/speech/monster" element={<SpeechPracticePage mode="monster" />} />
             <Route path="/dev/speech/matching" element={<SpeechPracticePage mode="matching" />} />
@@ -53,6 +78,15 @@ export default function App() {
             <Route path="/privacy" element={<PrivacyPage />} />
             <Route path="/support" element={<SupportPage />} />
             <Route path="/guide" element={<GuidePage />} />
+            <Route path="/parent" element={<ParentHomePage />} />
+            <Route path="/parent/analysis" element={<ParentAnalysisPage />} />
+            <Route path="/parent/analysis/:sessionId" element={<ParentAnalysisDetailPage />} />
+            <Route path="/parent/records" element={<ParentRecordsPage />} />
+            <Route path="/parent/therapist" element={<ParentTherapistPage />} />
+            <Route path="/parent/notifications" element={<ParentNotificationsPage />} />
+            <Route path="/parent/growth" element={<ParentGrowthPage />} />
+            <Route path="/parent/my" element={<ParentMyPage />} />
+            <Route path="/parent/settings" element={<ParentSettingsPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Suspense>

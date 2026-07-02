@@ -8,12 +8,20 @@ interface GameShellProps {
   statusLabel: string;
   hud?: ReactNode;
   children: ReactNode;
+  mainClassName?: string;
 }
 
-export function GameShell({ title, subtitle, statusLabel, hud, children }: GameShellProps) {
+export function GameShell({
+  title,
+  subtitle,
+  statusLabel,
+  hud,
+  children,
+  mainClassName,
+}: GameShellProps) {
   return (
     <div className="min-h-dvh bg-hope-sky px-4 py-6 text-hope-text sm:px-6 lg:px-8">
-      <main className="mx-auto flex max-w-[1040px] flex-col gap-5">
+      <main className={`mx-auto flex flex-col gap-5 ${mainClassName ?? 'max-w-[1040px]'}`}>
         <div className="flex items-center justify-between gap-3">
           <Link
             to="/learning"

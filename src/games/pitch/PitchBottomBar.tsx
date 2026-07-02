@@ -1,6 +1,7 @@
 import { Music2 } from 'lucide-react';
 
 const MASCOT_SRC = `/assets/${encodeURIComponent('학습하기_마스코트.png')}`;
+const MONSTER_SRC = '/assets/monster.png';
 
 export function PitchBottomBar() {
   return (
@@ -25,9 +26,12 @@ export function PitchBottomBar() {
         </div>
 
         <div className="flex h-28 w-24 shrink-0 items-end justify-center sm:h-32 sm:w-28">
-          <div className="flex h-24 w-24 items-center justify-center rounded-full bg-violet-300 text-5xl shadow-inner sm:h-28 sm:w-28 sm:text-6xl">
-            👾
-          </div>
+          <img
+            src={MONSTER_SRC}
+            alt="몬스터"
+            className="h-24 w-auto object-contain sm:h-28"
+            draggable={false}
+          />
         </div>
       </div>
     </footer>
