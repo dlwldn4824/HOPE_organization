@@ -32,7 +32,17 @@ const LINE_OPTS: ChartOptions<'line'> = {
   maintainAspectRatio: false,
   plugins: { legend: { display: false } },
   scales: {
-    x: { grid: { display: false }, ticks: { color: '#94a3b8', font: { size: 10 }, maxTicksLimit: 8 } },
+    x: {
+      grid: { display: false },
+      ticks: {
+        color: '#94a3b8',
+        font: { size: 10 },
+        maxTicksLimit: 6,
+        autoSkip: true,
+        maxRotation: 0,
+        minRotation: 0,
+      },
+    },
     y: {
       min: 0,
       max: 100,
