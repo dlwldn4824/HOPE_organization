@@ -8,6 +8,7 @@ from pathlib import Path
 import numpy as np
 from torch.utils.data import Dataset
 
+from speech_coach.data.augment import AugmentConfig, augment_waveform
 from speech_coach.data.g2p_ko import g2p_sentence
 from speech_coach.data.ipa_vocab import filter_to_vocab
 from speech_coach.training.audio_io import load_audio_mono_float32
@@ -34,6 +35,7 @@ class ManifestJsonlDataset(Dataset):
         repo_root: Path | None = None,
         max_samples: int | None = None,
         text_key: str = "transcript",
+        augment_config: AugmentConfig | None = None,
     ) -> None:
         self.rows: list[dict] = []
         mp = Path(manifest_path)
@@ -55,6 +57,7 @@ class ManifestJsonlDataset(Dataset):
             if max_samples is not None and len(self.rows) >= max_samples:
                 break
         self.repo_root = repo_root
+        self.augment_config = augment_config
 
     def __len__(self) -> int:
         return len(self.rows)
@@ -63,6 +66,8 @@ class ManifestJsonlDataset(Dataset):
         row = self.rows[idx]
         ap = _resolve_audio_path(row["audio_path"], self.repo_root)
         wav = load_audio_mono_float32(ap)
+        if self.augment_config is not None:
+            wav = augment_waveform(wav, config=self.augment_config)
         return {"input_values": wav, "phoneme_labels": row["phoneme_labels"]}
 
 
@@ -79,6 +84,7 @@ class KsponTrnDataset(Dataset):
         audio_root: str | Path,
         *,
         max_samples: int | None = None,
+        augment_config: AugmentConfig | None = None,
     ) -> None:
         self.pairs: list[tuple[Path, list[str]]] = []
         root = Path(audio_root)
@@ -98,6 +104,7 @@ class KsponTrnDataset(Dataset):
             self.pairs.append((ap, phones))
             if max_samples is not None and len(self.pairs) >= max_samples:
                 break
+        self.augment_config = augment_config
 
     def __len__(self) -> int:
         return len(self.pairs)
@@ -105,4 +112,6 @@ class KsponTrnDataset(Dataset):
     def __getitem__(self, idx: int) -> dict[str, np.ndarray | list[str]]:
         ap, phones = self.pairs[idx]
         wav = load_audio_mono_float32(ap)
+        if self.augment_config is not None:
+            wav = augment_waveform(wav, config=self.augment_config)
         return {"input_values": wav, "phoneme_labels": phones}

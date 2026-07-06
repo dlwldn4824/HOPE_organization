@@ -28,6 +28,7 @@ from speech_coach.data.hope_paths import (
     DEFAULT_MANIFEST,
     HOPE_ROOT,
 )
+from speech_coach.data.augment import AugmentConfig
 from speech_coach.data.ipa_vocab import build_vocab_json
 from speech_coach.eval.ctc_eval import (
     build_compute_metrics,
@@ -89,6 +90,13 @@ def run_ctc_training() -> None:
     p.add_argument("--adam_beta2", type=float, default=0.98)
     p.add_argument("--weight_decay", type=float, default=0.005)
     p.add_argument("--seed", type=int, default=42)
+    p.add_argument("--augment", action="store_true", help="§6.2 waveform augmentation (Stage2 권장)")
+    p.add_argument(
+        "--augment_pitch_max",
+        type=float,
+        default=2.0,
+        help="pitch shift ±semitones (Stage1-B: 5, Stage2: 2)",
+    )
     p.add_argument("--bf16", action="store_true")
     p.add_argument("--fp16", action="store_true")
     p.add_argument(
@@ -112,6 +120,14 @@ def run_ctc_training() -> None:
         args.eval_steps = min(args.eval_steps, 10)
         args.save_steps = min(args.save_steps, 10)
 
+    augment_config = None
+    if args.augment:
+        augment_config = AugmentConfig(
+            pitch_semitones_max=args.augment_pitch_max,
+            rng=random.Random(args.seed),
+        )
+        print(f"augmentation enabled (pitch ±{args.augment_pitch_max} st)")
+
     if args.manifest is None and (args.kspon_trn is None or args.kspon_audio_root is None):
         if DEFAULT_MANIFEST.is_file():
             args.manifest = DEFAULT_MANIFEST
@@ -124,12 +140,14 @@ def run_ctc_training() -> None:
             args.manifest,
             repo_root=args.repo_root,
             max_samples=args.max_samples,
+            augment_config=augment_config,
         )
     elif args.kspon_trn and args.kspon_audio_root:
         ds = KsponTrnDataset(
             args.kspon_trn,
             args.kspon_audio_root,
             max_samples=args.max_samples,
+            augment_config=augment_config,
         )
     else:
         raise SystemExit(
