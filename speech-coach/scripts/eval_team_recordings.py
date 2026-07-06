@@ -19,8 +19,8 @@ from pathlib import Path
 WORD_PAIRS: list[tuple[str, str, tuple[str, ...], tuple[str, ...]]] = [
     ("사과", "다과", ("apple",), ("apple_err",)),  # apple_err handled via label in name
     ("자두", "차두", ("jadu",), ()),
-    ("바다", "파다", ("bada", "pada"), ("풀",)),  # 풀 = 파다 오타
-    ("소리", "도리", ("see", "sori"), ()),
+    ("바다", "파다", ("bada", "pada", "see", "sea"), ("풀",)),  # see=바다 오타(장원준)
+    ("소리", "도리", ("sori",), ()),
     ("가방", "카방", ("gabang", "kabang"), ()),
     ("불", "물", ("bul",), ()),
 ]
@@ -99,6 +99,12 @@ def _parse_korean(stem: str) -> tuple[str, str, int, str] | None:
         anchor, side, trial = _nfc(m_side.group(1)), m_side.group(2).lower(), int(m_side.group(3))
         if anchor in OK_WORDS:
             ok, err = _pair_for_ok_word(anchor)
+            spoken = ok if side == "ok" else err
+            pair = f"{ok}/{err}"
+            return spoken, ok, trial, pair
+        if anchor in ERR_WORDS:
+            ok = WORD_TO_TARGET[anchor]
+            err = anchor
             spoken = ok if side == "ok" else err
             pair = f"{ok}/{err}"
             return spoken, ok, trial, pair

@@ -5,19 +5,27 @@
 - D1(KsponSpeech) test split PER ≤ 25 %
 - D2(AIHub 어린이 음성) test split PER ≤ 35 %
 
-Usage:
+Usage (PhonemeRecognizer, utterance 단위):
     python scripts/eval_test.py \\
       --manifest /path/to/test.jsonl \\
       --ckpt /path/to/checkpoints/stage1b-mix/final \\
       [--limit 500] \\
       [--report-target 0.25]
 
+Usage (Wav2Vec2-CTC 배치, 학습 val/test용):
+    python scripts/eval_test.py \\
+      --backend ctc \\
+      --manifest ../data/manifests/stage1b_val.jsonl \\
+      --ckpt checkpoints/stage1b-mix/final \\
+      --repo_root .. \\
+      [--output eval_val.json]
+
 Manifest entry shape:
     {"audio_path": "...wav", "target_phonemes": ["s","a"]}
 또는
     {"audio_path": "...wav", "transcript": "사과"}  # g2p_ko 로 자동 변환
 
-체크포인트가 없으면 PhonemeRecognizerStub 모드로 동작하고 stub임을 출력한다.
+recognizer 백엔드에서 체크포인트가 없으면 PhonemeRecognizerStub 모드로 동작한다.
 """
 
 from __future__ import annotations
@@ -30,6 +38,8 @@ from pathlib import Path
 
 import torch
 
+from speech_coach.data.hope_paths import HOPE_ROOT
+from speech_coach.eval.ctc_eval import evaluate_manifest, save_eval_report
 from speech_coach.eval.metrics import _edit_distance, phoneme_error_rate
 
 
@@ -83,19 +93,7 @@ def load_waveform(path: str) -> torch.Tensor:
     return waveform.squeeze(0)
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser(description="Evaluate phoneme recognizer PER on a manifest.")
-    parser.add_argument("--manifest", type=Path, required=True, help="JSONL test manifest")
-    parser.add_argument("--ckpt", type=Path, default=None, help="Checkpoint directory")
-    parser.add_argument("--limit", type=int, default=0, help="Optional cap on samples")
-    parser.add_argument(
-        "--report-target",
-        type=float,
-        default=None,
-        help="Optional PER target (0~1). Exit 1 if exceeded — useful for CI gates.",
-    )
-    args = parser.parse_args()
-
+def run_recognizer_eval(args: argparse.Namespace) -> int:
     rows = load_manifest(args.manifest)
     if args.limit:
         rows = rows[: args.limit]
@@ -142,7 +140,7 @@ def main() -> int:
     avg_ref_len = total_ref / len(refs)
 
     print()
-    print("=== PER report ===")
+    print("=== PER report (recognizer) ===")
     print(f"samples evaluated : {len(refs)}")
     print(f"samples skipped   : {skipped}")
     print(f"avg ref length    : {avg_ref_len:.2f}")
@@ -158,6 +156,71 @@ def main() -> int:
             return 1
 
     return 0
+
+
+def run_ctc_eval(args: argparse.Namespace) -> int:
+    if args.ckpt is None:
+        print("[error] --ckpt is required for --backend ctc", file=sys.stderr)
+        return 2
+
+    report = evaluate_manifest(
+        args.ckpt,
+        args.manifest,
+        repo_root=args.repo_root,
+        batch_size=args.batch_size,
+        max_samples=args.limit or None,
+        device=args.device,
+    )
+
+    print()
+    print("=== PER report (ctc) ===")
+    print(f"samples evaluated : {report.num_utterances}")
+    print(f"total edits       : {report.num_errors}")
+    print(f"ref phonemes      : {report.num_ref_phonemes}")
+    print(f"PER               : {report.per:.4f}  ({report.per_percent} %)")
+    print(f"manifest          : {report.manifest}")
+    print(f"checkpoint        : {report.checkpoint}")
+
+    if args.output is not None:
+        save_eval_report(report, args.output)
+        print(f"saved             : {args.output}")
+
+    if args.report_target is not None:
+        passed = report.per <= args.report_target
+        marker = "PASS" if passed else "FAIL"
+        print(f"target            : {args.report_target:.4f}  → {marker}")
+        if not passed:
+            return 1
+
+    return 0
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Evaluate phoneme recognizer PER on a manifest.")
+    parser.add_argument("--manifest", type=Path, required=True, help="JSONL test manifest")
+    parser.add_argument("--ckpt", type=Path, default=None, help="Checkpoint directory")
+    parser.add_argument(
+        "--backend",
+        choices=("recognizer", "ctc"),
+        default="recognizer",
+        help="recognizer=PhonemeRecognizer loop, ctc=batched Wav2Vec2-CTC",
+    )
+    parser.add_argument("--repo_root", type=Path, default=HOPE_ROOT, help="ctc: manifest audio_path root")
+    parser.add_argument("--output", type=Path, default=None, help="ctc: write JSON report")
+    parser.add_argument("--batch_size", type=int, default=4, help="ctc: eval batch size")
+    parser.add_argument("--device", type=str, default=None, help="ctc: cpu | cuda (default auto)")
+    parser.add_argument("--limit", type=int, default=0, help="Optional cap on samples")
+    parser.add_argument(
+        "--report-target",
+        type=float,
+        default=None,
+        help="Optional PER target (0~1). Exit 1 if exceeded — useful for CI gates.",
+    )
+    args = parser.parse_args()
+
+    if args.backend == "ctc":
+        return run_ctc_eval(args)
+    return run_recognizer_eval(args)
 
 
 if __name__ == "__main__":
