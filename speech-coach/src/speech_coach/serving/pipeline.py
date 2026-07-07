@@ -17,7 +17,13 @@ from speech_coach.models import (
     VariationClassifier,
     calc_pcc,
 )
-from speech_coach.serving.schemas import AnalyzeResponse, FeedbackBlock, PhonemeResult
+from speech_coach.serving.schemas import (
+    AnalyzeResponse,
+    ArticulationCue,
+    ArticulationDiagram,
+    FeedbackBlock,
+    PhonemeResult,
+)
 from speech_coach.utils.audio import preprocess
 
 
@@ -83,6 +89,14 @@ class InferencePipeline:
         pcc_score = calc_pcc(classifications)
         fb = self.feedback.generate(target_word, classifications, pcc_score)
 
+        articulation = None
+        if fb.get("articulation"):
+            articulation = ArticulationCue(**fb["articulation"])
+
+        diagram = None
+        if fb.get("diagram"):
+            diagram = ArticulationDiagram(**fb["diagram"])
+
         results = [
             PhonemeResult(
                 target=tgt,
@@ -97,7 +111,12 @@ class InferencePipeline:
         return AnalyzeResponse(
             pcc=pcc_score,
             phoneme_results=results,
-            feedback=FeedbackBlock(kid_text=fb["kid_text"], practice_word_next=fb.get("practice_word_next")),
+            feedback=FeedbackBlock(
+                kid_text=fb["kid_text"],
+                practice_word_next=fb.get("practice_word_next"),
+                articulation=articulation,
+                diagram=diagram,
+            ),
             latency_ms=int((time.time() - t0) * 1000),
             model_version=self.model_version,
         )

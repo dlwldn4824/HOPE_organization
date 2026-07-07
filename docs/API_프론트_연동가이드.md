@@ -95,8 +95,23 @@ GET /health
     }
   ],
   "feedback": {
-    "kid_text": "잘했어! 다음에도 해볼까?",
-    "practice_word_next": null
+    "kid_text": "‘사과’에서 ‘ㅅ’ 대신 ‘t’로 들렸어. ‘ㅅ’는 바람이 새는 소리예요…",
+    "practice_word_next": null,
+    "articulation": {
+      "target_phoneme": "s",
+      "actual_phoneme": "t",
+      "status": "SUB",
+      "highlight_regions": ["alveolar"],
+      "place_ko": ["치조음"],
+      "jamo": "ㅅ",
+      "variation": "STOPPING",
+      "tip": "혀끝을 윗니 뒤에 두고 바람을 보내요."
+    },
+    "diagram": {
+      "image": "articulation-diagram.png",
+      "highlight_regions": ["alveolar"],
+      "regions": { "...": "GET /v1/articulation/diagram 과 동일 구조" }
+    }
   },
   "latency_ms": 120,
   "model_version": "kspc-v0.8-stub"
@@ -113,6 +128,8 @@ GET /health
 | `phoneme_results[].status` | `OK` / `SUB`(대체) / `DEL`(생략) / `DIS`(왜곡) |
 | `phoneme_results[].variation` | 변동 유형 (있을 때만) |
 | `feedback.kid_text` | 아이에게 보여줄 멘트 |
+| `feedback.articulation` | 틀린 음소 조음 cue (`highlight_regions`, `tip`, `jamo`) |
+| `feedback.diagram` | 단면도 overlay (`highlight_regions` + `regions.overlay_pct`) |
 | `feedback.practice_word_next` | 다음 연습 단어 제안 (있을 때) |
 | `latency_ms` | 서버 처리 시간(ms) |
 | `model_version` | 모델 버전 문자열 |
@@ -124,6 +141,27 @@ GET /health
 | `400` | 잘못된 요청 | `target_word 또는 target_phonemes 중 하나는 필요합니다.` |
 | `400` | 오디오 너무 큼 | `audio too large` |
 | `422` | 필수 필드 누락 | FastAPI validation error |
+
+---
+
+## 4.1 조음 단면도 메타 `GET /v1/articulation/diagram`
+
+앱 시작 시 1회 로드해 `public/` 에 둔 `articulation-diagram.png` 위에 overlay 합니다.
+
+```json
+{
+  "version": 1,
+  "image": "articulation-diagram.png",
+  "regions": {
+    "alveolar": {
+      "label_ko": "치조음",
+      "overlay_pct": { "left": 22, "top": 48, "width": 18, "height": 14 }
+    }
+  }
+}
+```
+
+**프론트 overlay 예시:** `highlight_regions` 에 포함된 키만 `position:absolute` + `overlay_pct` 로 반투명 원/타원 표시.
 
 ---
 
@@ -162,7 +200,25 @@ export type AnalyzeResponse = {
     variation: string | null;
     acoustic_deviation_z: number | null;
   }[];
-  feedback: { kid_text: string; practice_word_next: string | null };
+  feedback: {
+    kid_text: string;
+    practice_word_next: string | null;
+    articulation?: {
+      target_phoneme: string;
+      actual_phoneme: string | null;
+      status: string;
+      highlight_regions: string[];
+      place_ko: string[];
+      jamo: string | null;
+      variation: string | null;
+      tip: string;
+    } | null;
+    diagram?: {
+      image: string | null;
+      highlight_regions: string[];
+      regions?: Record<string, { label_ko: string; overlay_pct: { left: number; top: number; width: number; height: number } }>;
+    } | null;
+  };
   latency_ms: number;
   model_version: string;
 };
@@ -213,8 +269,10 @@ result.phoneme_results.forEach((p) => {
   console.log(p.target, p.actual, p.status); // OK / SUB / ...
 });
 
-// 아이 멘트
+// 아이 멘트 + 조음 그림
 setMessage(result.feedback.kid_text);
+setArticulation(result.feedback.articulation);
+setDiagramHighlights(result.feedback.diagram?.highlight_regions ?? []);
 ```
 
 ---

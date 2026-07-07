@@ -47,3 +47,11 @@ def test_analyze_auto_phonemes_from_word():
     r = client.post("/v1/utterance/analyze", files=files, data=data)
     assert r.status_code == 200, r.text
     assert len(r.json()["phoneme_results"]) >= 1
+
+
+def test_articulation_diagram_endpoint():
+    r = client.get("/v1/articulation/diagram")
+    assert r.status_code == 200
+    body = r.json()
+    assert "regions" in body
+    assert "alveolar" in body["regions"]

@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "image": "articulation-diagram.png",
+  "description": "한국어 자음 조음 위치 단면도. highlight_regions 키로 overlay 영역을 켭니다.",
+  "regions": {
+    "bilabial": {
+      "label_ko": "순음",
+      "jamoes": ["ㅂ", "ㅃ", "ㅍ", "ㅁ"],
+      "overlay_pct": { "left": 6, "top": 42, "width": 14, "height": 16 }
+    },
+    "alveolar": {
+      "label_ko": "치조음",
+      "jamoes": ["ㄷ", "ㄸ", "ㅌ", "ㅅ", "ㅆ", "ㄴ", "ㄹ"],
+      "overlay_pct": { "left": 22, "top": 48, "width": 18, "height": 14 }
+    },
+    "palatal": {
+      "label_ko": "경구개음",
+      "jamoes": ["ㅈ", "ㅉ", "ㅊ"],
+      "overlay_pct": { "left": 38, "top": 28, "width": 20, "height": 18 }
+    },
+    "velar": {
+      "label_ko": "연구개음",
+      "jamoes": ["ㄱ", "ㄲ", "ㅋ", "ㅇ"],
+      "overlay_pct": { "left": 52, "top": 18, "width": 22, "height": 20 }
+    },
+    "glottal": {
+      "label_ko": "후음",
+      "jamoes": ["ㅎ"],
+      "overlay_pct": { "left": 72, "top": 52, "width": 18, "height": 22 }
+    }
+  }
+}

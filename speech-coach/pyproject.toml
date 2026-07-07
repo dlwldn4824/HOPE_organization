@@ -28,6 +28,9 @@ opensmile = ["opensmile-python>=2.5"]
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+speech_coach = ["resources/articulation/*"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]

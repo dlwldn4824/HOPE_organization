@@ -9,6 +9,7 @@ from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import RedirectResponse
 
 from speech_coach import __version__
+from speech_coach.data.articulation import load_diagram_spec
 from speech_coach.serving.form_parsers import parse_target_phonemes
 from speech_coach.serving.pipeline import InferencePipeline
 
@@ -60,6 +61,12 @@ def health() -> dict[str, object]:
         "checkpoint_dir": str(ckpt_path),
         "mode": mode,
     }
+
+
+@app.get("/v1/articulation/diagram")
+def articulation_diagram() -> dict:
+    """조음 단면도 overlay 메타 (프론트 1회 로드용)."""
+    return load_diagram_spec()
 
 
 @app.post("/v1/utterance/analyze")
