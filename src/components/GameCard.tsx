@@ -42,7 +42,7 @@ export function GameCard({ game, isLoggedIn, compact = false }: GameCardProps) {
           >
             {game.number}
           </span>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <h3
               className={`truncate font-bold text-hope-text ${
                 compact ? 'text-xs sm:text-base lg:text-lg' : 'text-lg'
@@ -52,7 +52,9 @@ export function GameCard({ game, isLoggedIn, compact = false }: GameCardProps) {
             </h3>
             <p
               className={`mt-0.5 line-clamp-2 leading-snug text-hope-sub ${
-                compact ? 'text-[10px] sm:text-sm' : 'mt-1 text-sm leading-relaxed'
+                compact
+                  ? 'min-h-[2.5rem] text-[10px] sm:min-h-[2.75rem] sm:text-sm'
+                  : 'mt-1 min-h-[2.75rem] text-sm leading-relaxed'
               }`}
             >
               {game.description}
@@ -60,38 +62,40 @@ export function GameCard({ game, isLoggedIn, compact = false }: GameCardProps) {
           </div>
         </div>
 
-        <div
-          className={`mb-2 space-y-1 rounded-xl bg-gray-50/80 sm:mb-4 sm:space-y-2 sm:rounded-2xl ${
-            compact ? 'px-2 py-2 sm:px-4 sm:py-3' : 'mb-4 px-4 py-3'
-          }`}
-        >
-          <div className="flex items-center justify-between gap-1 text-[10px] sm:text-sm">
-            <span className="shrink-0 text-hope-sub">연습 요소</span>
-            <span className="truncate text-right font-semibold text-hope-text">
-              {game.practiceElement}
-            </span>
+        <div className="mt-auto">
+          <div
+            className={`mb-2 grid gap-1.5 rounded-xl bg-gray-50/80 sm:mb-4 sm:gap-2 sm:rounded-2xl ${
+              compact ? 'px-2 py-2 sm:px-4 sm:py-3' : 'mb-4 px-4 py-3'
+            }`}
+          >
+            <div className="grid grid-cols-[5.5rem_minmax(0,1fr)] items-center gap-2 text-[10px] sm:grid-cols-[6.5rem_minmax(0,1fr)] sm:text-sm">
+              <span className="text-hope-sub">연습 요소</span>
+              <span className="truncate text-right font-semibold text-hope-text">
+                {game.practiceElement}
+              </span>
+            </div>
+            <div className="grid grid-cols-[5.5rem_minmax(0,1fr)] items-center gap-2 text-[10px] sm:grid-cols-[6.5rem_minmax(0,1fr)] sm:text-sm">
+              <span className="flex items-center gap-1 text-hope-sub">
+                <Trophy className="h-3 w-3 shrink-0 text-amber-500 sm:h-3.5 sm:w-3.5" />
+                최고 기록
+              </span>
+              <span className="truncate text-right font-bold text-hope-green">
+                {isLoggedIn ? game.bestRecord : '—'}
+              </span>
+            </div>
           </div>
-          <div className="flex items-center justify-between gap-1 text-[10px] sm:text-sm">
-            <span className="flex shrink-0 items-center gap-1 text-hope-sub">
-              <Trophy className="h-3 w-3 text-amber-500 sm:h-3.5 sm:w-3.5" />
-              최고 기록
-            </span>
-            <span className="truncate text-right font-bold text-hope-green">
-              {isLoggedIn ? game.bestRecord : '—'}
-            </span>
-          </div>
-        </div>
 
-        <button
-          type="button"
-          onClick={() => navigate(game.path)}
-          className={`mt-auto flex w-full items-center justify-center gap-1 rounded-xl bg-hope-green font-bold text-white transition-all hover:brightness-105 active:scale-[0.99] sm:gap-2 sm:rounded-2xl ${
-            compact ? 'h-9 text-[11px] sm:h-12 sm:text-sm' : 'h-12 text-sm'
-          }`}
-        >
-          시작하기
-          <ArrowRight className={compact ? 'h-3 w-3 sm:h-4 sm:w-4' : 'h-4 w-4'} />
-        </button>
+          <button
+            type="button"
+            onClick={() => navigate(game.path)}
+            className={`flex w-full items-center justify-center gap-1 rounded-xl bg-hope-green font-bold text-white transition-all hover:brightness-105 active:scale-[0.99] sm:gap-2 sm:rounded-2xl ${
+              compact ? 'h-9 text-[11px] sm:h-12 sm:text-sm' : 'h-12 text-sm'
+            }`}
+          >
+            시작하기
+            <ArrowRight className={compact ? 'h-3 w-3 sm:h-4 sm:w-4' : 'h-4 w-4'} />
+          </button>
+        </div>
       </div>
     </article>
   );
