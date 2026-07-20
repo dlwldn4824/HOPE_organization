@@ -365,7 +365,7 @@ export function MonsterGamePage() {
                   imageSrc={MONSTER_BATTLE_ASSETS.bunny}
                   alt="버니"
                   flash={flashPlayer}
-                  className="absolute bottom-[7%] left-[6%] h-[52%] w-auto origin-bottom scale-[1.3]"
+                  className="absolute bottom-[calc(7%-10px)] left-[6%] h-[52%] w-auto origin-bottom scale-[1.3]"
                 />
                 <BattleCharacter
                   imageSrc={MONSTER_BATTLE_ASSETS.monster}
