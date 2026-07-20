@@ -202,14 +202,14 @@ export function PitchGamePage() {
                   type="button"
                   onClick={() => void handleSpeak()}
                   disabled={isAnalyzing || Boolean(result) || isAdvancing}
-                  className={`flex h-16 w-16 items-center justify-center rounded-full text-white shadow-md transition disabled:opacity-50 sm:h-20 sm:w-20 ${
+                  className={`flex h-24 w-24 items-center justify-center rounded-full text-white shadow-[0_12px_28px_rgba(83,181,63,0.35)] transition disabled:opacity-50 sm:h-28 sm:w-28 ${
                     isRecording ? 'scale-95 animate-pulse bg-hope-green-dark' : 'bg-hope-green hover:brightness-105'
                   }`}
                   aria-label={isRecording ? '녹음 종료' : '녹음하기'}
                 >
-                  <Mic className="h-7 w-7 sm:h-8 sm:w-8" />
+                  <Mic className="h-10 w-10 sm:h-12 sm:w-12" />
                 </button>
-                <p className="mt-3 text-center text-sm font-bold text-hope-sub">
+                <p className="mt-4 text-center text-base font-black text-hope-text sm:text-lg">
                   {isRecording
                     ? '녹음 중… 말하면 다시 눌러 종료해요'
                     : isAnalyzing
@@ -228,11 +228,6 @@ export function PitchGamePage() {
                     정확도 {lastScore}% · 사과 +1
                   </p>
                 ) : null}
-                <div className="mt-3 flex h-10 w-full max-w-sm items-center justify-center rounded-[16px] border-2 border-dashed border-[#D5E6F5] bg-[#F7FBFF] sm:mt-4 sm:h-12">
-                  <span className="text-[10px] font-bold tracking-wide text-[#94A3B8]">
-                    VOICE WAVE ANIMATION
-                  </span>
-                </div>
               </div>
 
               {error ? (
