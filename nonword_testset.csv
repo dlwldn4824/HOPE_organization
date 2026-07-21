@@ -1,0 +1,41 @@
+id,category,nonword,target_ipa,target_phoneme,expected_error_types,notes
+A01,A_fricative,싸부기,s͈a bu gi,ㅆ (초성 경음),파열음화(ㅆ→ㄸ),치조경마찰
+A02,A_fricative,세타루,se tʰa ɾu,ㅅ (초성 평음),파열음화(ㅅ→ㄷ),치조마찰+격음+유음
+A03,A_fricative,소지파,so dʑi pʰa,ㅅ (초성),파열음화(ㅅ→ㄷ),치조마찰+파찰+격음
+A04,A_fricative,슈펴노,sju pʰjʌ no,ㅅ (이중모음 앞),파열음화·격음화,이중모음 조합
+A05,A_fricative,씨댜포,s͈i dja pʰo,ㅆ (초성 경음),경음소실(ㅆ→ㅅ),경음+이중모음
+A06,A_fricative,사퇴누,sa tʰø nu,ㅅ (기본),파열음화,후설원순모음 포함
+A07,A_fricative,스뷰기,sɯ bju gi,ㅅ + 이중모음,파열음화,고모음+이중모음
+A08,A_fricative,시야타,si ja tʰa,ㅅ (연이은 반모음),파열음화,활음+격음
+A09,A_fricative,소댜프,so dja pʰɯ,ㅅ,파열음화,이중모음+격음
+A10,A_fricative,쇼퇴누,sjo tʰø nu,ㅅ (이중모음),파열음화,이중모음+원순모음
+B01,B_liquid,랴브니,ɾja bɯ ni,ㄹ (초성 탄설음),유음탈락·비음화(ㄹ→ㄴ),이중모음+비음
+B02,B_liquid,롸튜퍼,ɾwa tʰju pʰʌ,ㄹ (반모음 앞),유음탈락,이중모음+격음
+B03,B_liquid,리텨보,ɾi tʰjʌ bo,ㄹ (기본),유음탈락,격음+이중모음
+B04,B_liquid,룰맨쿠,ɾul mɛn kʰu,ㄹ (초성+종성),종성ㄹ탈락,이중자음
+B05,B_liquid,료쟈피,ɾjo dʑa pʰi,ㄹ (이중모음),유음→비음화,파찰음 포함
+B06,B_liquid,리놔쿠,ɾi nwa kʰu,ㄹ (기본),유음탈락,반모음 포함
+B07,B_liquid,뢰뷰마,ɾø bju ma,ㄹ (원순모음),유음탈락,단모음화
+B08,B_liquid,랴부지,ɾja bu dʑi,ㄹ (이중모음),유음→비음화,파찰음
+C01,C_plosive,캉토빼,kʰaŋ tʰo p͈ɛ,ㅋ/ㅌ/ㅃ,격음소실·경음소실,격음+격음+경음
+C02,C_plosive,티푸꺼,tʰi pʰu k͈ʌ,ㅌ/ㅍ/ㄲ,격음소실,격음+격음+경음
+C03,C_plosive,파꾸띠,pʰa k͈u t͈i,ㅍ/ㄲ/ㄸ,격음소실·경음소실,격음+경음+경음
+C04,C_plosive,트뻐샤,tʰɯ p͈ʌ sja,ㅌ/ㅃ,격음소실+마찰음,격음+경음+마찰
+C05,C_plosive,쿠따포,kʰu t͈a pʰo,ㅋ/ㄸ/ㅍ,격음소실,격음+경음+격음
+C06,C_plosive,꺼쨔피,k͈ʌ tɕ͈a pʰi,ㄲ/ㅉ/ㅍ,경음소실,경음+경파찰+격음
+C07,C_plosive,뽀튜라,p͈o tʰju ɾa,ㅃ/ㅌ,경음소실,경음+격음+유음
+C08,C_plosive,따커니,t͈a kʰʌ ni,ㄸ/ㅋ,경음소실+격음소실,경음+격음+비음
+C09,C_plosive,께쿠빠,k͈e kʰu p͈a,ㄲ/ㅋ/ㅃ,경음소실+격음소실,경격경 삼중
+C10,C_plosive,쁘차니,p͈ɯ tɕʰa ni,ㅃ/ㅊ,경음소실+격파찰,경음+격파찰+비음
+D01,D_affricate,챠뷰노,tɕʰja bju no,ㅊ (격파찰음),격음소실(ㅊ→ㅈ),격파찰+이중모음
+D02,D_affricate,쬬베카,tɕ͈jo be kʰa,ㅉ (경파찰음),경음소실(ㅉ→ㅈ),경파찰+격음
+D03,D_affricate,쥬토니,dʑju tʰo ni,ㅈ (평파찰음),파찰→마찰 오류,파찰+격음
+D04,D_affricate,쳐뽜무,tɕʰjʌ p͈wa mu,ㅊ/ㅃ,격음소실+경음소실,격파찰+경음
+D05,D_affricate,쨔튜피,tɕ͈a tʰju pʰi,ㅉ/ㅌ/ㅍ,경음소실+격음소실,경파찰+격음
+D06,D_affricate,쥐태카,dʑwi tʰɛ kʰa,ㅈ (원순모음),파찰음 왜곡,파찰+격음
+E01,E_complex,스랴쿠빠,sɯ ɾja kʰu p͈a,ㅅ+ㄹ+ㅋ+ㅃ,다중 오류,4음절 복합
+E02,E_complex,쓔뢰꺼,s͈ju ɾø k͈ʌ,ㅆ+ㄹ+ㄲ,경음+유음+경음,3중 난이도
+E03,E_complex,쳐륵따,tɕʰjʌ ɾɯk t͈a,ㅊ+ㄹ+ㄸ,격파찰+유음+경음,종성ㄱ 포함
+E04,E_complex,씨뤄티,s͈i ɾwʌ tʰi,ㅆ+ㄹ+ㅌ,경음+유음+격음,3중 난이도
+E05,E_complex,쫘슬끼,tɕ͈wa sɯl k͈i,ㅉ+ㅅ+ㄹ+ㄲ,경파찰+마찰+유음+경음,종성ㄹ+경음
+E06,E_complex,쓔롸빼,s͈ju ɾwa p͈ɛ,ㅆ+ㄹ+ㅃ,경마찰+유음+경음,경음 삼중
