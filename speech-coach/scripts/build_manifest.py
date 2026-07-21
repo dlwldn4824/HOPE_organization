@@ -93,13 +93,24 @@ def scan_audio(audio_root: Path, speakers: list[str]) -> list[dict]:
             if not m:
                 logger.warning("파일명 규칙 위반, 스킵: %s", wav_path.name)
                 continue
-            file_speaker, utt_id, condition = m.group(1), m.group(2), m.group(3)
+            file_speaker, utt_id, condition_raw = m.group(1), m.group(2), m.group(3)
             if file_speaker.lower() != speaker.lower():
                 logger.warning(
                     "파일명의 화자(%s)가 디렉토리(%s)와 다름, 스킵: %s", file_speaker, speaker, wav_path
                 )
                 continue
-            found.append({"speaker": speaker, "id": utt_id, "condition": condition, "path": wav_path})
+            # 끝에 붙은 trial 번호(_1, _2 ...)는 반복 회차 표시일 뿐 condition이 아니므로 제거.
+            # "misart_st2pl" 같은 세부 태그는 숫자로 끝나지 않으니 그대로 유지된다.
+            condition = re.sub(r"_\d+$", "", condition_raw)
+            found.append(
+                {
+                    "speaker": speaker,
+                    "id": utt_id,
+                    "condition": condition,
+                    "condition_raw": condition_raw,
+                    "path": wav_path,
+                }
+            )
     return found
 
 
@@ -140,7 +151,7 @@ def main() -> None:
 
             target_phonemes = g2p_sentence(row["nonword"])
             record = {
-                "utt_id": f"{entry['speaker']}_{utt_id}_{entry['condition']}",
+                "utt_id": f"{entry['speaker']}_{utt_id}_{entry['condition_raw']}",
                 "audio_path": str(entry["path"].resolve()),
                 "speaker": entry["speaker"],
                 "nonword": row["nonword"],
