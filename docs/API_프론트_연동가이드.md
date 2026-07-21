@@ -78,20 +78,23 @@ GET /health
 ```json
 {
   "pcc": 75.0,
+  "confidence": 0.92,
   "phoneme_results": [
     {
       "target": "s",
       "actual": "s",
       "status": "OK",
       "variation": null,
-      "acoustic_deviation_z": 0.3
+      "acoustic_deviation_z": 0.3,
+      "phoneme_confidence": 0.97
     },
     {
       "target": "a",
       "actual": "a",
       "status": "OK",
       "variation": null,
-      "acoustic_deviation_z": 0.1
+      "acoustic_deviation_z": 0.1,
+      "phoneme_confidence": 0.95
     }
   ],
   "feedback": {
@@ -123,10 +126,12 @@ GET /health
 | 필드 | 설명 |
 |------|------|
 | `pcc` | Percent Consonants Correct (0~100, 높을수록 잘함) |
+| `confidence` | 발화 전체 평균 최대 softmax 확률 (0~1). 음소별 아님 — 발화 단위 참고 지표 |
 | `phoneme_results[].target` | 목표 음소 (IPA) |
 | `phoneme_results[].actual` | 모델이 인식한 음소 |
 | `phoneme_results[].status` | `OK` / `SUB`(대체) / `DEL`(생략) / `DIS`(왜곡) |
 | `phoneme_results[].variation` | 변동 유형 (있을 때만) |
+| `phoneme_results[].phoneme_confidence` | 이 음소 구간 평균 최대 softmax 확률 (0~1). `DEL`(예측 자체가 없음)이면 `null` |
 | `feedback.kid_text` | 아이에게 보여줄 멘트 |
 | `feedback.articulation` | 틀린 음소 조음 cue (`highlight_regions`, `tip`, `jamo`) |
 | `feedback.diagram` | 단면도 overlay (`highlight_regions` + `regions.overlay_pct`) |
@@ -193,12 +198,14 @@ const API_BASE = import.meta.env.VITE_HOPE_API_BASE;
 
 export type AnalyzeResponse = {
   pcc: number;
+  confidence: number;
   phoneme_results: {
     target: string;
     actual: string | null;
     status: string;
     variation: string | null;
     acoustic_deviation_z: number | null;
+    phoneme_confidence: number | null;
   }[];
   feedback: {
     kid_text: string;

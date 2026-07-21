@@ -13,6 +13,10 @@ class PhonemeResult(BaseModel):
     status: str  # OK | SUB | DEL | DIS
     variation: str | None = None
     acoustic_deviation_z: float | None = None
+    phoneme_confidence: float | None = Field(
+        default=None,
+        description="이 음소 구간의 평균 최대 softmax 확률 (0~1). DEL(예측 없음)이면 null.",
+    )
 
 
 class ArticulationCue(BaseModel):
@@ -50,6 +54,9 @@ class FeedbackBlock(BaseModel):
 
 class AnalyzeResponse(BaseModel):
     pcc: float
+    confidence: float = Field(
+        description="발화 전체 프레임의 평균 최대 softmax 확률 (0~1). 음소별이 아닌 발화 단위 지표.",
+    )
     phoneme_results: list[PhonemeResult]
     feedback: FeedbackBlock
     latency_ms: int

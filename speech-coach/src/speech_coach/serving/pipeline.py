@@ -8,11 +8,14 @@ from pathlib import Path
 
 import torch
 
+from speech_coach.data.g2p_ko import phoneme_ids
+from speech_coach.data.ipa_vocab import PHONEME_TO_ID
 from speech_coach.models import (
     FeedbackGenerator,
     ForcedAligner,
     NeedlemanWunschAligner,
     OpenSmileAnalyzer,
+    PhonemeBoundary,
     PhonemeRecognizer,
     VariationClassifier,
     calc_pcc,
@@ -77,7 +80,7 @@ class InferencePipeline:
         t0 = time.time()
         audio = preprocess(audio_bytes, target_sr=16000)
 
-        actual_phonemes, frame_logits, _conf = self.recognizer.predict(
+        actual_phonemes, frame_logits, confidence = self.recognizer.predict(
             audio,
             target_phonemes=target_phonemes,
         )
@@ -97,6 +100,9 @@ class InferencePipeline:
         if fb.get("diagram"):
             diagram = ArticulationDiagram(**fb["diagram"])
 
+        per_phoneme_confidence = boundary_confidences(phoneme_boundaries, frame_logits)
+        phoneme_confidences = align_confidences(alignment, per_phoneme_confidence)
+
         results = [
             PhonemeResult(
                 target=tgt,
@@ -104,12 +110,14 @@ class InferencePipeline:
                 status=status,
                 variation=variation,
                 acoustic_deviation_z=z,
+                phoneme_confidence=conf,
             )
-            for tgt, act, status, variation, z in classifications
+            for (tgt, act, status, variation, z), conf in zip(classifications, phoneme_confidences, strict=True)
         ]
 
         return AnalyzeResponse(
             pcc=pcc_score,
+            confidence=confidence,
             phoneme_results=results,
             feedback=FeedbackBlock(
                 kid_text=fb["kid_text"],
@@ -122,6 +130,39 @@ class InferencePipeline:
         )
 
 
-def torch_int_seq(_phonemes: list[str]) -> torch.Tensor:
-    """forced_aligner 스텁용 더미 인덱스 시퀀스."""
-    return torch.zeros(1, max(len(_phonemes), 1), dtype=torch.long)
+def torch_int_seq(phonemes: list[str]) -> torch.Tensor:
+    """실제 IPA 음소 심볼 -> vocab ID 텐서 (forced_aligner의 torchaudio 정밀 정렬용)."""
+    ids = phoneme_ids(phonemes) if phonemes else [PHONEME_TO_ID["<pad>"]]
+    return torch.tensor([ids], dtype=torch.long)
+
+
+def boundary_confidences(boundaries: list[PhonemeBoundary], frame_logits: torch.Tensor) -> list[float]:
+    """음소 경계별 평균 최대 softmax 확률. boundaries는 actual_phonemes와 순서가 1:1 대응."""
+    probs = torch.softmax(frame_logits, dim=-1)
+    if probs.ndim == 3 and probs.shape[0] == 1:
+        probs = probs.squeeze(0)
+    frame_max = probs.max(dim=-1).values
+    out: list[float] = []
+    for b in boundaries:
+        segment = frame_max[b.start_frame : b.end_frame + 1]
+        out.append(float(segment.mean()) if segment.numel() > 0 else 0.0)
+    return out
+
+
+def align_confidences(
+    alignment: list[tuple[str | None, str | None]],
+    per_actual_confidence: list[float],
+) -> list[float | None]:
+    """alignment(NW 결과)를 걸어가며 VariationClassifier.classify()와 같은 필터(tgt is None 스킵)로
+    per_actual_confidence(actual_phonemes 순서)를 매칭한다. DEL(act is None)은 None."""
+    out: list[float | None] = []
+    cursor = 0
+    for tgt, act in alignment:
+        conf: float | None = None
+        if act is not None:
+            conf = per_actual_confidence[cursor] if cursor < len(per_actual_confidence) else None
+            cursor += 1
+        if tgt is None:
+            continue
+        out.append(conf)
+    return out
