@@ -1,17 +1,21 @@
-"""Naver Clova Speech Recognition (장문 인식 REST API) wrapper.
+"""Naver CLOVA Speech Recognition (단문 인식, 구 AI·NAVER API) wrapper.
 
-API를 실제로 호출해 계약을 검증할 수 없는 환경에서 작성되었다. 아래 요청
-형식(`/recognizer/upload`, `X-CLOVASPEECH-API-KEY` 헤더, `media`+`params`
-멀티파트)은 Naver Clova Speech 공개 문서 기준 추정이며, **처음 실행 전에
-실제 API 문서와 대조 확인이 필요하다.** 실패 시 예외를 그대로 삼키지 않고
-`PredictionResult.error`에 남기므로, 계약이 다르면 전량 실패로 즉시 드러난다.
+2026-07-22 실제 API 호출로 계약 검증 완료 (이전 버전은 추정치였음 — 장문 인식
+API를 잘못 가정했었다). 실제 계약:
 
-환경변수: `CLOVA_INVOKE_URL`, `CLOVA_SECRET`
+    POST https://naveropenapi.apigw.ntruss.com/recog/v1/stt?lang=Kor
+    Headers:
+      X-NCP-APIGW-API-KEY-ID: {client_id}
+      X-NCP-APIGW-API-KEY: {client_secret}
+      Content-Type: application/octet-stream
+    Body: 오디오 바이트 그대로 (멀티파트 아님)
+    응답: {"text": "..."}
+
+환경변수: `NCP_CLOVA_CLIENT_ID`, `NCP_CLOVA_CLIENT_SECRET`
 """
 
 from __future__ import annotations
 
-import json
 import logging
 import os
 import time
@@ -22,6 +26,8 @@ import requests
 
 logger = logging.getLogger("providers.clova")
 
+_ENDPOINT = "https://naveropenapi.apigw.ntruss.com/recog/v1/stt"
+
 
 @dataclass
 class PredictionResult:
@@ -31,35 +37,37 @@ class PredictionResult:
 
 
 def is_configured() -> bool:
-    return bool(os.environ.get("CLOVA_INVOKE_URL") and os.environ.get("CLOVA_SECRET"))
+    return bool(os.environ.get("NCP_CLOVA_CLIENT_ID") and os.environ.get("NCP_CLOVA_CLIENT_SECRET"))
 
 
 class ClovaProvider:
-    def __init__(self, retries: int = 3, timeout_sec: float = 30.0) -> None:
-        invoke_url = os.environ.get("CLOVA_INVOKE_URL")
-        secret = os.environ.get("CLOVA_SECRET")
-        if not invoke_url or not secret:
-            raise RuntimeError("CLOVA_INVOKE_URL / CLOVA_SECRET 환경변수가 필요합니다.")
-        self.invoke_url = invoke_url.rstrip("/")
-        self.secret = secret
+    def __init__(self, retries: int = 3, timeout_sec: float = 30.0, lang: str = "Kor") -> None:
+        client_id = os.environ.get("NCP_CLOVA_CLIENT_ID")
+        client_secret = os.environ.get("NCP_CLOVA_CLIENT_SECRET")
+        if not client_id or not client_secret:
+            raise RuntimeError("NCP_CLOVA_CLIENT_ID / NCP_CLOVA_CLIENT_SECRET 환경변수가 필요합니다.")
+        self.headers = {
+            "X-NCP-APIGW-API-KEY-ID": client_id,
+            "X-NCP-APIGW-API-KEY": client_secret,
+            "Content-Type": "application/octet-stream",
+        }
+        self.lang = lang
         self.retries = retries
         self.timeout_sec = timeout_sec
 
     def predict_one(self, audio_path: Path) -> PredictionResult:
-        url = f"{self.invoke_url}/recognizer/upload"
-        headers = {"X-CLOVASPEECH-API-KEY": self.secret}
-        params = {"language": "ko-KR", "completion": "sync"}
-
         last_err: Exception | None = None
         for attempt in range(1, self.retries + 1):
             t0 = time.time()
             try:
-                with audio_path.open("rb") as f:
-                    files = {
-                        "media": (audio_path.name, f, "audio/wav"),
-                        "params": (None, json.dumps(params), "application/json"),
-                    }
-                    resp = requests.post(url, headers=headers, files=files, timeout=self.timeout_sec)
+                audio_bytes = audio_path.read_bytes()
+                resp = requests.post(
+                    _ENDPOINT,
+                    params={"lang": self.lang},
+                    headers=self.headers,
+                    data=audio_bytes,
+                    timeout=self.timeout_sec,
+                )
                 resp.raise_for_status()
                 data = resp.json()
                 text = str(data.get("text", ""))
@@ -67,5 +75,7 @@ class ClovaProvider:
             except (requests.RequestException, ValueError, KeyError) as e:
                 last_err = e
                 logger.warning("Clova 호출 실패 (%d/%d) %s: %s", attempt, self.retries, audio_path.name, e)
+                if attempt < self.retries:
+                    time.sleep(1.0 * attempt)
 
         return PredictionResult(pred_text="", elapsed_sec=0.0, error=str(last_err))
