@@ -44,6 +44,17 @@
 - AI가 **음소 단위**로 객관 피드백 제공
 - 보호자·치료사가 **성장 데이터**를 함께 보고 다음 목표를 맞춤
 
+```mermaid
+flowchart LR
+  C[아동 게임 연습] --> A[AI 음소 분석]
+  A --> S[학습 결과 저장]
+  S --> P[보호자 대시보드]
+  S --> T[치료사 공유 리포트]
+  P --> H[가정 연습 목표 조정]
+  T --> H
+  H --> C
+```
+
 ---
 
 ## 핵심 기능 (구현 상세)
@@ -65,6 +76,17 @@
 3. 정확도·피드백을 게임 점수/HP/성장 UI에 반영
 4. `POST /api/learning/results`로 학습 결과 저장
 
+```mermaid
+flowchart LR
+  G1[발음 따라하기] --> R[마이크 녹음]
+  G2[몬스터 대결] --> R
+  G3[두더지 잡기] --> R
+  R --> W[WAV 변환]
+  W --> API["/api/speech/analyze"]
+  API --> UI[점수 / HP / 나무 성장]
+  UI --> SAVE["/api/learning/results"]
+```
+
 마스코트 **버니**와 밝은 UI로 치료실 긴장감을 낮추고, 보상(코인·보석·배지·상점)으로 동기를 유지합니다.
 
 ### 2. AI 발음 분석 — “무엇을 말했나”가 아니라 “어떻게 발음했나”
@@ -74,13 +96,16 @@
 
 또박또박의 분석 파이프라인은 다음을 목표로 설계했습니다.
 
-```text
-아동 발화(WAV)
-  → Wav2Vec2-CTC (XLS-R 백본) IPA 음소 인식  (추가 학습 없이 추론)
-  → g2pK로 목표 단어의 정답 IPA 생성
-  → Levenshtein 정렬로 음소 위치별 일치/오류 매칭
-  → PCC · PER 임상·공학 지표 산출
-  → 앱에 정확도·피드백·음소 하이라이트로 표시
+```mermaid
+flowchart LR
+  A[아동 발화 WAV] --> B["Wav2Vec2-CTC XLS-R 추론"]
+  B --> C[인식 IPA 음소열]
+  T[목표 단어] --> G[g2pK]
+  G --> D[정답 IPA]
+  C --> L[Levenshtein 정렬]
+  D --> L
+  L --> M[PCC / PER 산출]
+  M --> U[앱 피드백 · 하이라이트]
 ```
 
 **자체 개발한 부분**은 “모델 가중치 학습”이 아니라,  
@@ -141,6 +166,22 @@ password: hope1234
 | **학습 여부** | **추가 학습(파인튜닝) 없이 추론**에 사용 |
 | **자체 개발** | g2pK 정답 IPA 생성 → Levenshtein 음소 정렬 → **PCC·PER 산출** 파이프라인 |
 | **추론 위치** | 서버 추론 (Node.js API 뒤 PyTorch). 단어 발화(1~2초) 기준 실시간 이하 |
+
+```mermaid
+flowchart TB
+  subgraph client [프론트엔드]
+    MIC[마이크 녹음] --> WAV[mono WAV]
+  end
+  subgraph server [백엔드]
+    WAV --> EP["POST /api/speech/analyze"]
+    EP --> INF[Wav2Vec2-CTC 추론]
+    TW[target_word] --> G2P[g2pK 정답 IPA]
+    INF --> ALIGN[Levenshtein 정렬]
+    G2P --> ALIGN
+    ALIGN --> SCORE[PCC · PER]
+  end
+  SCORE --> FB[게임 UI / 보호자 리포트]
+```
 
 왜 “자체 모델을 학습했다”고만 말하지 않나요?
 
@@ -239,6 +280,15 @@ password: hope1234
 | **현재** | 기술 PoC · 상용 대비 비교까지 완료 |
 | **다음** | 동의 기반 **아동 발화 + 치료사 검수 라벨** 확보 후 임계값·재학습 |
 | **협력 기관** | **햇살아래보듬이나눔이어린이집 부설 언어치료실** (실증 협력 확정) |
+
+```mermaid
+flowchart LR
+  P1[기술 PoC] --> P2[상용 STT 대비]
+  P2 --> P3[기관 실증 협력]
+  P3 --> P4[아동 발화 + 치료사 라벨]
+  P4 --> P5[임계값 · 재학습]
+  P5 --> P6[가정 소음 · 무발화 모드]
+```
 
 실증에서 다룰 계획:
 
