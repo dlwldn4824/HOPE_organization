@@ -61,10 +61,14 @@ export function computeMonsterAttack(
 
   let damage = 0;
   if (hit && accuracy !== null) {
-    damage =
+    // 4라운드 기준: 한 방에 과도하게 끝나지 않도록 피해량 상한
+    const raw =
       accuracy >= ATTACK_CRIT_THRESHOLD
-        ? Math.round(accuracy * 0.9)
-        : Math.round(accuracy * 0.6);
+        ? Math.round(24 + (accuracy - ATTACK_CRIT_THRESHOLD) * 0.3)
+        : accuracy >= 65
+          ? Math.round(18 + (accuracy - 65) * 0.3)
+          : Math.round(12 + (accuracy - ATTACK_HIT_THRESHOLD) * 0.35);
+    damage = Math.min(28, Math.max(10, raw));
   }
 
   const resolvedMessage = scoreMissing

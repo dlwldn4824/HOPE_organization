@@ -53,7 +53,9 @@ export function LearningHero({ isLoggedIn, status }: LearningHeroProps) {
           <h1 className="text-2xl font-extrabold leading-tight text-hope-text sm:text-3xl lg:text-4xl">
             버니와 함께
             <br />
-            <span className="text-hope-green">재미있게 발음 연습</span>을 시작해요!
+            <span className="whitespace-nowrap">
+              <span className="text-hope-green">재미있게 발음 연습</span>을 시작해요!
+            </span>
           </h1>
 
           <p className="mt-3 text-sm leading-relaxed text-hope-sub sm:text-base lg:text-lg">

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '../../contexts/useAuth';
 import { analyzeSpeech, type SpeechAnalyzeResult } from '../../utils/speechApi';
-import { convertBlobToMonoWav } from '../../utils/wav';
+import { convertBlobToMonoWav, measureWavPeak } from '../../utils/wav';
 
 interface AnalyzeInput {
   targetWord: string;
@@ -12,11 +12,14 @@ interface UseSpeechRecorderOptions {
   maxDurationMs?: number;
   /** 게임 중 마이크 스트림을 유지해 매 녹음마다 권한/준비 지연을 없앱니다 */
   keepStreamOpen?: boolean;
+  /** 이 값보다 피크가 낮으면 무음으로 간주 */
+  minPeak?: number;
 }
 
 export function useSpeechRecorder(options: UseSpeechRecorderOptions = {}) {
   const maxDurationMs = options.maxDurationMs ?? 5000;
   const keepStreamOpen = options.keepStreamOpen ?? false;
+  const minPeak = options.minPeak ?? 0.02;
   const { user } = useAuth();
   const [isRecording, setIsRecording] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -79,7 +82,14 @@ export function useSpeechRecorder(options: UseSpeechRecorderOptions = {}) {
 
   const recordAudio = useCallback(async (): Promise<Blob> => {
     const stream = await prepareMicrophone();
-    const recorder = new MediaRecorder(stream);
+
+    const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+      ? 'audio/webm;codecs=opus'
+      : MediaRecorder.isTypeSupported('audio/webm')
+        ? 'audio/webm'
+        : '';
+
+    const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
     chunksRef.current = [];
     recorderRef.current = recorder;
 
@@ -93,19 +103,37 @@ export function useSpeechRecorder(options: UseSpeechRecorderOptions = {}) {
           stream.getTracks().forEach((track) => track.stop());
           streamRef.current = null;
         }
-        resolve(new Blob(chunksRef.current, { type: recorder.mimeType }));
+
+        const blob = new Blob(chunksRef.current, {
+          type: recorder.mimeType || mimeType || 'audio/webm',
+        });
+
+        if (blob.size < 256) {
+          reject(new Error('녹음된 소리가 없어요. 마이크를 확인하고 다시 말해보세요.'));
+          return;
+        }
+
+        resolve(blob);
       };
 
       recorder.onerror = () => reject(new Error('녹음 중 오류가 발생했습니다.'));
 
-      recorder.start();
+      // timeslice: 브라우저가 중간에 청크를 내보내 빈 녹음을 줄입니다
+      recorder.start(250);
       setIsRecording(true);
       timeoutRef.current = window.setTimeout(() => stopRecording(), maxDurationMs);
     });
 
     setIsRecording(false);
-    return convertBlobToMonoWav(recordedBlob);
-  }, [maxDurationMs, prepareMicrophone, stopRecording]);
+    const wavBlob = await convertBlobToMonoWav(recordedBlob);
+    const peak = await measureWavPeak(wavBlob);
+
+    if (peak < minPeak) {
+      throw new Error('소리가 거의 들리지 않았어요. 마이크에 가까이서 또박또박 말해보세요.');
+    }
+
+    return wavBlob;
+  }, [maxDurationMs, minPeak, prepareMicrophone, stopRecording]);
 
   const analyzeAudio = useCallback(
     async (audio: Blob, input: AnalyzeInput): Promise<SpeechAnalyzeResult> => {
@@ -126,10 +154,10 @@ export function useSpeechRecorder(options: UseSpeechRecorderOptions = {}) {
   const recordAndAnalyze = useCallback(
     async (input: AnalyzeInput): Promise<SpeechAnalyzeResult> => {
       setError(null);
-      setIsAnalyzing(true);
 
       try {
         const wavBlob = await recordAudio();
+        setIsAnalyzing(true);
         return await analyzeAudio(wavBlob, input);
       } catch (caught) {
         const message = caught instanceof Error ? caught.message : '분석 중 오류가 발생했습니다.';
@@ -137,6 +165,7 @@ export function useSpeechRecorder(options: UseSpeechRecorderOptions = {}) {
         throw caught instanceof Error ? caught : new Error(message);
       } finally {
         setIsAnalyzing(false);
+        setIsRecording(false);
       }
     },
     [analyzeAudio, recordAudio],

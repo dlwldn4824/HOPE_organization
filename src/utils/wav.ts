@@ -15,6 +15,20 @@ export async function convertBlobToMonoWav(input: Blob, sampleRate = 16000) {
   return encodeWav(rendered.getChannelData(0), sampleRate);
 }
 
+/** WAV 피크(0~1). 무음/마이크 실패 판별용 */
+export async function measureWavPeak(wav: Blob) {
+  const buffer = await wav.arrayBuffer();
+  const view = new DataView(buffer);
+  if (buffer.byteLength < 44) return 0;
+
+  let peak = 0;
+  for (let offset = 44; offset + 1 < buffer.byteLength; offset += 2) {
+    const sample = Math.abs(view.getInt16(offset, true) / 0x8000);
+    if (sample > peak) peak = sample;
+  }
+  return peak;
+}
+
 function encodeWav(samples: Float32Array, sampleRate: number) {
   const bytesPerSample = 2;
   const blockAlign = bytesPerSample;
