@@ -150,7 +150,7 @@ export function PitchGamePage() {
         className="min-h-dvh bg-hope-sky bg-cover bg-center bg-no-repeat px-3 py-4 text-hope-text sm:px-6 sm:py-6 lg:px-8"
         style={{ backgroundImage: "url('/assets/pitch-orchard-background.png')" }}
       >
-        <main className="mx-auto flex w-full max-w-[1040px] flex-col gap-3 sm:gap-4 lg:h-[calc(100dvh-3rem)] lg:min-h-0">
+        <main className="mx-auto flex w-full max-w-[1040px] flex-col gap-3 sm:gap-4">
           <div className="flex shrink-0 items-center justify-between gap-2 sm:gap-3">
             <Link
               to="/learning"
@@ -178,11 +178,11 @@ export function PitchGamePage() {
             </div>
           </section>
 
-          <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 sm:gap-4 lg:grid-cols-[minmax(0,7fr)_minmax(260px,3fr)]">
-            <section className="flex min-h-0 min-w-0 flex-col rounded-[20px] bg-white p-4 shadow-sm sm:rounded-[24px] sm:p-5">
-              <div className="rounded-[16px] bg-[#F7FBFF] px-4 py-3 sm:rounded-[20px] sm:px-5 sm:py-4">
+          <div className="grid shrink-0 grid-cols-1 gap-3 sm:gap-4 lg:max-h-[calc((100dvh-13rem)*0.75)] lg:grid-cols-[minmax(0,7fr)_minmax(260px,3fr)]">
+            <section className="flex min-w-0 flex-col rounded-[20px] bg-white p-3 shadow-sm sm:rounded-[24px] sm:p-4">
+              <div className="rounded-[16px] bg-[#F7FBFF] px-3 py-2.5 sm:rounded-[20px] sm:px-4 sm:py-3">
                 <p className="text-xs font-bold text-hope-sub">Today&apos;s Word</p>
-                <p className="mt-2 break-keep text-3xl font-black tracking-tight text-hope-text sm:text-4xl lg:text-5xl">
+                <p className="mt-1.5 break-keep text-2xl font-black tracking-tight text-hope-text sm:text-3xl lg:text-4xl">
                   {currentRound?.targetWord ?? '사과'}
                 </p>
               </div>
@@ -191,25 +191,25 @@ export function PitchGamePage() {
                 type="button"
                 onClick={handleListen}
                 disabled={isRecording || isAnalyzing || Boolean(result)}
-                className="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-hope-green text-sm font-bold text-white shadow-sm transition enabled:hover:brightness-105 disabled:opacity-50 sm:mt-4 sm:h-12 sm:text-base"
+                className="mt-2.5 flex h-10 w-full items-center justify-center gap-2 rounded-2xl bg-hope-green text-sm font-bold text-white shadow-sm transition enabled:hover:brightness-105 disabled:opacity-50 sm:mt-3 sm:h-11 sm:text-base"
               >
                 <Volume2 className="h-5 w-5" />
                 들어보기
               </button>
 
-              <div className="mt-4 flex min-h-[180px] flex-1 flex-col items-center justify-center sm:mt-5">
+              <div className="mt-3 flex min-h-[130px] flex-col items-center justify-center sm:mt-3.5">
                 <button
                   type="button"
                   onClick={() => void handleSpeak()}
                   disabled={isAnalyzing || Boolean(result) || isAdvancing}
-                  className={`flex h-24 w-24 items-center justify-center rounded-full text-white shadow-[0_12px_28px_rgba(83,181,63,0.35)] transition disabled:opacity-50 sm:h-28 sm:w-28 ${
+                  className={`flex h-20 w-20 items-center justify-center rounded-full text-white shadow-[0_12px_28px_rgba(83,181,63,0.35)] transition disabled:opacity-50 sm:h-24 sm:w-24 ${
                     isRecording ? 'scale-95 animate-pulse bg-hope-green-dark' : 'bg-hope-green hover:brightness-105'
                   }`}
                   aria-label={isRecording ? '녹음 종료' : '녹음하기'}
                 >
-                  <Mic className="h-10 w-10 sm:h-12 sm:w-12" />
+                  <Mic className="h-9 w-9 sm:h-10 sm:w-10" />
                 </button>
-                <p className="mt-4 text-center text-base font-black text-hope-text sm:text-lg">
+                <p className="mt-3 text-center text-sm font-black text-hope-text sm:text-base">
                   {isRecording
                     ? '녹음 중… 말하면 다시 눌러 종료해요'
                     : isAnalyzing
@@ -237,24 +237,24 @@ export function PitchGamePage() {
               ) : null}
             </section>
 
-            <aside className="flex min-h-0 min-w-0 flex-col">
-              <section className="flex min-h-0 flex-1 flex-col rounded-[20px] bg-white p-4 shadow-sm sm:rounded-[24px] sm:p-5">
-                <h3 className="text-base font-black text-hope-text">오늘의 발음 나무</h3>
-                <p className="mt-1 text-sm font-semibold text-hope-sub">
+            <aside className="flex min-w-0 flex-col">
+              <section className="flex flex-col rounded-[20px] bg-white p-3 shadow-sm sm:rounded-[24px] sm:p-4">
+                <h3 className="text-sm font-black text-hope-text sm:text-base">오늘의 발음 나무</h3>
+                <p className="mt-1 text-xs font-semibold text-hope-sub sm:text-sm">
                   이번에 성공하면 나무가 자랄지도!!
                 </p>
 
-                <div className="mt-4 flex min-h-0 flex-1 flex-col items-center justify-center rounded-[16px] bg-[#F7FBFF] px-3 py-5">
+                <div className="mt-3 flex flex-col items-center justify-center rounded-[16px] bg-[#F7FBFF] px-3 py-3 sm:py-4">
                   <img
                     key={treeLevel}
                     src={TREE_LEVEL_SRC[treeLevel - 1]}
                     alt={`발음 나무 레벨 ${treeLevel}`}
-                    className="h-36 w-auto max-w-full object-contain transition-transform duration-500 sm:h-44"
+                    className="h-28 w-auto max-w-full object-contain transition-transform duration-500 sm:h-32"
                     draggable={false}
                   />
                 </div>
 
-                <div className="mt-4 flex items-center justify-center gap-1.5 text-xl">
+                <div className="mt-3 flex items-center justify-center gap-1.5 text-lg sm:text-xl">
                   {TREE_STAGE_LABELS.map((label, index) => {
                     const stage = index + 1;
                     const reached = stage <= treeLevel;
@@ -273,17 +273,17 @@ export function PitchGamePage() {
                   })}
                 </div>
 
-                <div className="mt-4 h-2.5 w-full overflow-hidden rounded-full bg-[#E8F2FA]">
+                <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-[#E8F2FA]">
                   <div
                     className="h-full rounded-full bg-hope-green transition-all duration-500"
                     style={{ width: `${progressPercent}%` }}
                   />
                 </div>
 
-                <p className="mt-3 text-center text-base font-black text-hope-text">
+                <p className="mt-2 text-center text-sm font-black text-hope-text sm:text-base">
                   {appleCount} / {APPLE_GOAL}
                 </p>
-                <p className="mt-1 break-keep text-center text-sm font-semibold text-hope-sub">
+                <p className="mt-1 break-keep text-center text-xs font-semibold text-hope-sub sm:text-sm">
                   나무가 무럭무럭 자라고 있어요!
                 </p>
               </section>
