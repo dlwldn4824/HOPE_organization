@@ -4,7 +4,8 @@
 
 > 아이의 발음을 함께 듣는 시간 — 치료실과 가정 사이를 잇는 발음 연습 서비스
 
-팀 **정융고능팀** · HOPE Project
+팀 **정융고능팀** · HOPE Project  
+GitHub 저장소: [`dlwldn4824/ttobak-ttobak`](https://github.com/dlwldn4824/ttobak-ttobak) (표시명: 또박또박)
 
 | 자료 | 링크 |
 |------|------|
